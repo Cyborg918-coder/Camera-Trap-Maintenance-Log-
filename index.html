@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1b5e20">
+<link rel="manifest" href="manifest.json">
+<title>红外相机维护日志</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+         margin: 0; background: #f2f4f2; color: #222; font-size: 16px; padding-bottom: 70px; }
+  .hdr { background: #1b5e20; color: #fff; padding: 12px 16px; position: sticky; top: 0; z-index: 10;
+         display: flex; justify-content: space-between; align-items: center; }
+  .hdr h1 { font-size: 17px; margin: 0; }
+  .net { font-size: 12px; padding: 3px 9px; border-radius: 12px; background: #4caf50; }
+  .net.off { background: #f44336; }
+  .wrap { padding: 12px; }
+  .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px;
+          box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .lbl { font-size: 13px; color: #777; margin-bottom: 6px; font-weight: 600; }
+  input[type=text], input[type=search], select, textarea { width: 100%; padding: 11px; border: 1.5px solid #ddd;
+          border-radius: 9px; font-size: 16px; font-family: inherit; background: #fff; }
+  input:focus, select:focus, textarea:focus { border-color: #1b5e20; outline: none; }
+  .btn { background: #1b5e20; color: #fff; border: none; padding: 14px; border-radius: 10px;
+         font-size: 17px; width: 100%; font-weight: 600; margin-top: 8px; cursor: pointer; display: block; text-align: center; }
+  .btn:active { background: #145214; }
+  .btn.sec { background: #fff; color: #1b5e20; border: 1.5px solid #1b5e20; }
+  .btn.warn { background: #d84315; }
+  .btn.sm { padding: 10px; font-size: 15px; width: auto; flex: 1; margin-top: 0; }
+  .row { display: flex; gap: 8px; }
+  /* 操作勾选 */
+  .ops { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .op { display: flex; align-items: center; gap: 8px; padding: 13px; border: 1.5px solid #ddd;
+        border-radius: 9px; background: #fafafa; cursor: pointer; font-size: 15px; }
+  .op.on { border-color: #1b5e20; background: #e8f5e9; font-weight: 600; }
+  .op input { width: 20px; height: 20px; accent-color: #1b5e20; }
+  /* 相机列表 */
+  .cam-list { max-height: 340px; overflow-y: auto; margin-top: 8px; }
+  .cam-item { padding: 13px; border-bottom: 1px solid #eee; display: flex;
+              justify-content: space-between; align-items: center; cursor: pointer; }
+  .cam-item:active { background: #f0f7f1; }
+  .cam-item .code { font-weight: 700; font-size: 17px; color: #1b5e20; }
+  .cam-item .meta { font-size: 12px; color: #888; text-align: right; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 9px; }
+  .b-active { background: #e8f5e9; color: #2e7d32; }
+  .b-removed { background: #ffebee; color: #c62828; }
+  .b-pending { background: #fff8e1; color: #f57f17; }
+  /* 文件按钮 (大按钮, 手机可点) */
+  .file-btn { display: block; width: 100%; text-align: center; padding: 14px; border-radius: 10px;
+              font-size: 16px; font-weight: 600; cursor: pointer; background: #fff;
+              color: #1b5e20; border: 1.5px solid #1b5e20; margin-top: 8px; }
+  .file-btn:active { background: #e8f5e9; }
+  input[type=file] { display: none; }
+  /* 标签页 */
+  .tabs { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; display: flex;
+          border-top: 1px solid #ddd; z-index: 20; }
+  .tab { flex: 1; padding: 10px 4px; text-align: center; font-size: 12px; color: #888; cursor: pointer; }
+  .tab.on { color: #1b5e20; font-weight: 700; }
+  .tab .icon { font-size: 20px; display: block; }
+  .hidden { display: none !important; }
+  .empty { text-align: center; color: #999; padding: 30px; font-size: 14px; }
+  .rec { padding: 12px; border-bottom: 1px solid #eee; }
+  .rec .t1 { font-weight: 700; color: #1b5e20; }
+  .rec .t2 { font-size: 13px; color: #666; margin-top: 3px; }
+  .rec .t3 { font-size: 12px; color: #999; margin-top: 3px; }
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+           background: rgba(0,0,0,.82); color: #fff; padding: 11px 20px; border-radius: 22px;
+           font-size: 14px; z-index: 100; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .gps { font-size: 13px; color: #555; background: #f5f5f5; padding: 9px; border-radius: 8px; margin-top: 6px; }
+  .stat { display: flex; gap: 10px; text-align: center; }
+  .stat > div { flex: 1; background: #f5f7f5; border-radius: 9px; padding: 10px; }
+  .stat .n { font-size: 22px; font-weight: 700; color: #1b5e20; }
+  .stat .l { font-size: 12px; color: #888; }
+  /* 相机详情(二级页) */
+  .overlay { position: fixed; inset: 0; background: #f2f4f2; z-index: 50; overflow-y: auto; }
+  .ov-hdr { background: #1b5e20; color: #fff; padding: 12px 16px; display: flex;
+            justify-content: space-between; align-items: center; position: sticky; top: 0; }
+  .ov-hdr .back { font-size: 15px; cursor: pointer; padding: 4px 10px; background: rgba(255,255,255,.2); border-radius: 8px; }
+  .info-grid { display: grid; grid-template-columns: auto 1fr; gap: 7px 12px; font-size: 14px; }
+  .info-grid .k { color: #888; }
+  .offline-bar { background: #fff8e1; color: #f57f17; padding: 8px 16px; font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>📷 红外相机维护日志</h1>
+  <span class="net" id="netTag">在线</span>
+</div>
+<div id="offlineBar" class="offline-bar hidden">📴 离线模式 — 记录会安全保存在本机，联网后自动同步</div>
+
+<!-- ========== 标签1: 维护记录 ========== -->
+<div class="wrap" id="page-log">
+  <div class="card">
+    <div class="lbl">① 维护人</div>
+    <select id="operator"><option value="">请选择维护人</option></select>
+  </div>
+
+  <div class="card">
+    <div class="lbl">② 选择相机编号</div>
+    <input type="search" id="camSearch" placeholder="输入编号搜索 (如 MTG01)" oninput="filterCam()">
+    <div class="cam-list" id="camList"></div>
+    <div id="selectedCam" class="gps hidden"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">③ 维护操作（可多选）</div>
+    <div class="ops" id="opsBox">
+      <label class="op"><input type="checkbox" value="核对编号" onchange="opChange(this)">核对编号</label>
+      <label class="op"><input type="checkbox" value="更换电池" onchange="opChange(this)">更换电池</label>
+      <label class="op"><input type="checkbox" value="更换存储卡" onchange="opChange(this)">更换存储卡</label>
+      <label class="op"><input type="checkbox" value="挪动位置" onchange="opChange(this)">挪动位置</label>
+      <label class="op"><input type="checkbox" value="新增布设" onchange="opChange(this)">新增布设</label>
+      <label class="op"><input type="checkbox" value="移除相机" onchange="opChange(this)">移除相机</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">④ 现场信息</div>
+    <button class="btn sec" onclick="getGPS()">📍 获取当前位置</button>
+    <div class="gps" id="gpsBox">未定位</div>
+    <button class="btn sec" style="margin-top:6px;font-size:14px" onclick="toggleManualGPS()">✏️ 手动输入经纬度（定位失败时用）</button>
+    <div id="manualGpsBox" class="hidden" style="margin-top:8px">
+      <div style="display:flex;gap:8px">
+        <input type="text" id="manualLat" placeholder="纬度 40.123456" inputmode="decimal">
+        <input type="text" id="manualLng" placeholder="经度 116.123456" inputmode="decimal">
+      </div>
+      <button class="btn sec" style="margin-top:6px;font-size:14px" onclick="applyManualGPS()">使用这组坐标</button>
+    </div>
+    <div style="margin-top:10px">
+      <div class="lbl">详情备注</div>
+      <textarea id="note" rows="2" placeholder="如: 新卡编号SD-0123 / 电压2.9V / 挪到东侧20米"></textarea>
+    </div>
+    <label class="file-btn" for="photo">📷 拍照 / 🖼 从相册选择</label>
+    <input type="file" id="photo" accept="image/*" onchange="onPhoto(this)">
+    <div class="gps" id="photoBox">未选择照片</div>
+    <div style="font-size:12px;color:#999;margin-top:6px">点击后系统会让你选「拍照」或「从相册选」</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">⑤ 轨迹文件（KML）</div>
+    <label class="file-btn" for="kmlFile">🗺️ 上传KML文件（两步路导出）</label>
+    <input type="file" id="kmlFile" accept=".kml,.xml,application/vnd.google-earth.kml+xml" onchange="importKML(this)">
+    <div class="gps" id="kmlBox">未上传</div>
+    <button class="btn sec" style="margin-top:8px;font-size:14px" onclick="toggleKmlHelp()">❓ 微信里的KML怎么上传？点这里看步骤</button>
+    <div id="kmlHelp" class="hidden" style="margin-top:8px;background:#fffbea;border:1px solid #ffe08a;border-radius:9px;padding:12px;font-size:13px;line-height:1.75;color:#664d03">
+      <b>为什么点「上传」看不到微信文件？</b><br>
+      手机浏览器只能访问手机的「相册 / 下载 / 文件」这几个公共位置，
+      看不到微信自己的专属文件夹（这是手机系统的限制，所有网页都一样，不是本程序的问题）。<br><br>
+      <b>【安卓】3步：</b><br>
+      ① 微信 → 文件传输助手 → 点开那个KML文件<br>
+      ② 右上角「…」→ 选「<b>保存到手机</b>」<br>
+      ③ 回网页 → 点「上传KML文件」→ 在文件选择器里选「<b>下载</b>」分类 → 找到它<br><br>
+      <b>【iPhone】3步：</b><br>
+      ① 微信 → 文件传输助手 → 点开KML<br>
+      ② 右上角「…」→「用其他应用打开」→「<b>存储到"文件"</b>」<br>
+      ③ 回网页 → 点「上传KML文件」→「<b>浏览</b>」→「我的iPhone」→ 找到它<br><br>
+      <span style="color:#0a3622">💡 电脑上操作最简单：直接点上传按钮，把KML文件选中即可。</span>
+    </div>
+  </div>
+
+  <button class="btn" onclick="saveRecord()">💾 保存记录（离线可存）</button>
+</div>
+
+<!-- ========== 标签2: 记录列表 ========== -->
+<div class="wrap hidden" id="page-list">
+  <div class="card">
+    <div class="stat">
+      <div><div class="n" id="stTotal">0</div><div class="l">本地记录</div></div>
+      <div><div class="n" id="stPending">0</div><div class="l">待同步</div></div>
+      <div><div class="n" id="stSynced">0</div><div class="l">已同步</div></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <button class="btn sec" style="flex:0 0 auto;margin:0;padding:11px 20px" onclick="syncAll()">🔄 立即同步</button>
+    <div id="syncInfo" style="font-size:12px;color:#999;flex:1;line-height:1.5">尚未同步</div>
+  </div>
+  <div style="font-size:12px;color:#888;margin-top:8px;line-height:1.6;background:#f0f7f0;border-radius:8px;padding:9px 11px">
+    ✅ 同步是<b>自动</b>的：打开页面 / 保存记录 / 网络恢复时，会自动【上传本机 + 获取服务器】。<br>
+    这个按钮只在你想立即同步一次时使用。
+  </div>
+  <div class="card" id="recList"></div>
+</div>
+
+<!-- ========== 标签3: 相机台账 ========== -->
+<div class="wrap hidden" id="page-cams">
+  <div class="card">
+    <div class="lbl">相机台账（共 <span id="camCount">0</span> 台）</div>
+    <input type="search" id="camSearch2" placeholder="🔍 搜索相机编号" oninput="renderCameras()" style="margin-bottom:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn sec" style="flex:1;margin:0" onclick="showImport()">批量导入编号</button>
+      <button class="btn sec" id="addCamBtn" style="flex:1;margin:0;display:none" onclick="addCamera()">➕ 添加单台</button>
+    </div>
+    <div id="importBox" class="hidden" style="margin-top:10px">
+      <div class="lbl">每行一个编号（如 MTG01）</div>
+      <textarea id="importTxt" rows="5" placeholder="MTG01&#10;MTG02&#10;YS01"></textarea>
+      <button class="btn" onclick="doImport()">确认导入</button>
+    </div>
+    <div style="font-size:12px;color:#999;margin-top:8px">点击相机可查看该相机全部维护日志</div>
+  </div>
+  <div class="card" id="camTable"></div>
+</div>
+
+<!-- ========== 标签4: 设置 ========== -->
+<div class="wrap hidden" id="page-set">
+  <div class="card">
+    <div class="lbl">维护人名单</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="newOp" placeholder="输入姓名后点添加" style="flex:1">
+      <button class="btn" style="width:auto;padding:11px 22px;margin:0" onclick="addOperator()">添加</button>
+    </div>
+    <div id="opList" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <div class="lbl">同步状态</div>
+    <div style="font-size:13px;color:#666;line-height:1.9">
+      服务器：<span id="srvShow" style="color:#333">（未配置）</span><br>
+      状态：<span id="srvStatus" style="color:#999">未检测</span>
+    </div>
+    <button class="btn sec" style="margin-top:9px" onclick="testServer()">🔌 测试连接</button>
+    <div style="font-size:12px;color:#999;margin-top:9px">
+      服务器地址已在程序内配置好，无需手动填写。<br>
+      离线时记录先存手机，有网络时自动同步。
+    </div>
+  </div>
+  <div class="card">
+    <div class="lbl">🔐 管理员模式</div>
+    <div id="adminState" style="font-size:13px;color:#666;line-height:1.6;margin-bottom:10px">
+      未开启 —— 队员看不到「修改 / 删除」按钮
+    </div>
+    <button class="btn sec" id="adminBtn" onclick="toggleAdmin()">🔐 开启管理员模式（需口令）</button>
+  </div>
+  <div class="card" id="trashCard">
+    <div class="lbl">🗑 回收站</div>
+    <div style="font-size:12px;color:#888;line-height:1.6;margin-bottom:10px">
+      删除的记录会先进入这里，可以恢复，也可以彻底删除。
+    </div>
+    <button class="btn sec" onclick="loadTrash()">查看已删除的记录</button>
+    <div id="trashList" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <div class="lbl">数据管理</div>
+    <button class="btn sec" onclick="exportJSON()">⬇️ 导出JSON备份（含照片/轨迹）</button>
+    <button class="btn warn" onclick="clearAll()">🗑 清空本地数据</button>
+    <div style="font-size:12px;color:#999;margin-top:9px">建议每次下山后导出一次备份（手机丢失/换机时可完整恢复）</div>
+  </div>
+  <div class="card">
+    <div class="lbl">离线可用性</div>
+    <div style="font-size:13px;color:#666;line-height:1.7">
+      本页面支持离线使用：出发前联网打开一次，之后无信号也能打开记录。
+      <br>建议：加到手机主屏幕（浏览器菜单→"添加到主屏幕"）
+    </div>
+  </div>
+</div>
+
+<!-- ========== 相机详情二级页 ========== -->
+<div class="overlay hidden" id="camDetail">
+  <div class="ov-hdr">
+    <span class="back" onclick="closeDetail()">← 返回</span>
+    <b id="detTitle">相机详情</b>
+    <span style="width:60px"></span>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <div class="lbl">基本信息</div>
+      <div class="info-grid" id="detInfo"></div>
+    </div>
+    <div class="card">
+      <div class="lbl">维护日志（<span id="detCount">0</span> 条）</div>
+      <div id="detLogs"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 底部标签栏 -->
+<div class="tabs">
+  <div class="tab on" onclick="switchTab(0,this)"><span class="icon">✏️</span>记录</div>
+  <div class="tab" onclick="switchTab(1,this)"><span class="icon">📋</span>记录列表</div>
+  <div class="tab" onclick="switchTab(2,this)"><span class="icon">📷</span>相机台账</div>
+  <div class="tab" onclick="switchTab(3,this)"><span class="icon">⚙️</span>设置</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== 数据层 ====================
+const LS = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem('ircam_' + k)) ?? d; } catch(e) { return d; } },
+  set(k, v) { localStorage.setItem('ircam_' + k, JSON.stringify(v)); }
+};
+let cameras = LS.get('cameras', []);
+let records = LS.get('records', []);
+let operators = LS.get('operators', []);
+// 同步服务器地址：空 = 与页面同源（页面和API在同一服务器，队员无需配置）
+const DEFAULT_SERVER = '';
+let serverUrl = LS.get('serverUrl', DEFAULT_SERVER);
+let selectedCode = '', gpsPos = null, photoData = null, kmlData = null;
+
+// ==================== 标签 ====================
+const pages = ['page-log','page-list','page-cams','page-set'];
+function switchTab(i, el) {
+  pages.forEach((p, j) => document.getElementById(p).classList.toggle('hidden', i !== j));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  if (i === 1) renderRecords();
+  if (i === 2) renderCameras();
+}
+
+// ==================== 网络 ====================
+function updateNet() {
+  const on = navigator.onLine;
+  const tag = document.getElementById('netTag');
+  tag.textContent = on ? '在线' : '离线';
+  tag.className = 'net' + (on ? '' : ' off');
+  document.getElementById('offlineBar').classList.toggle('hidden', on);
+  if (on) syncAll(true);   // 网络恢复 → 双向同步（上传本机 + 拉取服务器）
+}
+window.addEventListener('online', updateNet);
+window.addEventListener('offline', updateNet);
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ==================== 相机选择 ====================
+function filterCam() {
+  const q = document.getElementById('camSearch').value.trim().toUpperCase();
+  renderCamList(q);
+}
+function renderCamList(q = '') {
+  const box = document.getElementById('camList');
+  let list = cameras.filter(c => c.status !== 'removed');
+  if (q) list = list.filter(c => c.code.toUpperCase().includes(q));
+  if (list.length === 0) { box.innerHTML = '<div class="empty">无匹配相机<br>请到"相机台账"导入编号</div>'; return; }
+  box.innerHTML = list.slice(0, 50).map(c => `
+    <div class="cam-item" onclick="pickCam('${c.code}')">
+      <div><div class="code">${c.code}</div>
+        <div class="meta">${c.lastMaint ? '上次: ' + c.lastMaint + ' ' + (c.lastBy||'') : '无维护记录'}</div></div>
+      <div class="meta">${c.lat ? '📍' : ''}</div>
+    </div>`).join('');
+}
+function pickCam(code) {
+  selectedCode = code;
+  const c = cameras.find(x => x.code === code) || {};
+  document.getElementById('camSearch').value = code;
+  document.getElementById('camList').innerHTML = '';
+  const box = document.getElementById('selectedCam');
+  box.classList.remove('hidden');
+  box.innerHTML = `<b>已选: ${code}</b> · ${c.status === 'removed' ? '已移除' : '在役'}
+    ${c.lat ? `<br>台账坐标: ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : '<br>台账无坐标'}
+    ${c.lastMaint ? `<br>上次维护: ${c.lastMaint} ${c.lastBy||''}` : '<br>无维护记录'}`;
+}
+
+// ==================== 操作勾选 ====================
+function opChange(el) { el.closest('.op').classList.toggle('on', el.checked); }
+
+// ==================== GPS ====================
+function getGPS() {
+  if (!navigator.geolocation) { toast('此设备不支持定位'); return; }
+  toast('定位中...');
+  navigator.geolocation.getCurrentPosition(
+    p => {
+      gpsPos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+      document.getElementById('gpsBox').innerHTML =
+        `✅ ${gpsPos.lat.toFixed(6)}, ${gpsPos.lng.toFixed(6)}<br>精度 ±${gpsPos.acc.toFixed(0)}米`;
+      toast('定位成功');
+    },
+    e => {
+      const isHttp = location.protocol === 'http:' && !['localhost','127.0.0.1'].includes(location.hostname);
+      if (isHttp) {
+        document.getElementById('gpsBox').innerHTML = '❌ 定位失败<br><span style="color:#b8860b">原因：当前是 HTTP 访问，浏览器禁止网页获取定位（与离线缓存同一个限制，都需 HTTPS）</span><br><span style="color:#666">→ 请用下面的「✏️ 手动输入经纬度」</span>';
+        toast('HTTP下浏览器禁止定位，请手动输入');
+      } else {
+        toast('定位失败: ' + e.message + '（可试手动输入）');
+      }
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+// ==================== 手动经纬度（HTTP/无信号时的替代方案）====================
+function toggleManualGPS() {
+  const b = document.getElementById('manualGpsBox');
+  b.classList.toggle('hidden');
+  if (!b.classList.contains('hidden')) document.getElementById('manualLat').focus();
+}
+function applyManualGPS() {
+  const la = parseFloat(document.getElementById('manualLat').value);
+  const ln = parseFloat(document.getElementById('manualLng').value);
+  if (isNaN(la) || isNaN(ln) || Math.abs(la) > 90 || Math.abs(ln) > 180) {
+    toast('请输入有效经纬度（纬度 -90~90，经度 -180~180）'); return;
+  }
+  gpsPos = { lat: la, lng: ln, acc: null, manual: true };
+  document.getElementById('gpsBox').innerHTML =
+    `✅ ${la.toFixed(6)}, ${ln.toFixed(6)}<br><span style="color:#b8860b">（手动输入）</span>`;
+  toast('已使用手动坐标');
+}
+
+// ==================== KML 上传帮助（说明为什么看不到微信文件）====================
+function toggleKmlHelp() {
+  document.getElementById('kmlHelp').classList.toggle('hidden');
+}
+
+// ==================== 照片 ====================
+function onPhoto(input) {
+  const f = input.files[0]; if (!f) return;
+  // 压缩后存base64(控制体积)
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
+      canvas.width = img.width * scale; canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      photoData = canvas.toDataURL('image/jpeg', 0.7);
+      document.getElementById('photoBox').textContent = `✅ ${f.name} (压缩后 ${(photoData.length/1024/1.37).toFixed(0)}KB)`;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(f);
+}
+
+// ==================== KML ====================
+function importKML(input) {
+  const f = input.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    kmlData = { name: f.name, size: f.size, content: e.target.result.slice(0, 200000) };
+    document.getElementById('kmlBox').textContent = `✅ ${f.name} (${(f.size/1024).toFixed(1)}KB)`;
+    toast('KML已附加');
+  };
+  reader.readAsText(f);
+}
+
+// ==================== 保存记录 ====================
+function saveRecord() {
+  const operator = document.getElementById('operator').value;
+  if (!operator) { toast('请先选择维护人'); return; }
+  if (!selectedCode) { toast('请先选择相机编号'); return; }
+  const ops = [...document.querySelectorAll('#opsBox input:checked')].map(i => i.value);
+  if (ops.length === 0 && !kmlData) { toast('请至少勾选一项操作'); return; }
+  const note = document.getElementById('note').value.trim();
+
+  const rec = {
+    id: 'R' + Date.now() + Math.random().toString(36).slice(2, 6),
+    ts: new Date().toISOString(),
+    operator, code: selectedCode, ops: ops.length ? ops : ['轨迹上传'], note,
+    lat: gpsPos ? gpsPos.lat : null, lng: gpsPos ? gpsPos.lng : null,
+    photo: photoData, kml: kmlData, synced: false
+  };
+  records.unshift(rec);
+  LS.set('records', records);
+
+  const cam = cameras.find(c => c.code === selectedCode);
+  if (cam) {
+    cam.lastMaint = rec.ts.slice(0, 10); cam.lastBy = operator;
+    if (ops.includes('挪动位置') && gpsPos) { cam.lat = gpsPos.lat; cam.lng = gpsPos.lng; }
+    if (ops.includes('新增布设') && gpsPos) { cam.lat = gpsPos.lat; cam.lng = gpsPos.lng; cam.status = 'active'; }
+    if (ops.includes('移除相机')) cam.status = 'removed';
+    LS.set('cameras', cameras);
+  }
+
+  document.querySelectorAll('#opsBox input').forEach(i => { i.checked = false; i.closest('.op').classList.remove('on'); });
+  document.getElementById('note').value = '';
+  document.getElementById('gpsBox').textContent = '未定位';
+  document.getElementById('photoBox').textContent = '未选择照片';
+  document.getElementById('kmlBox').textContent = '未上传';
+  document.getElementById('camSearch').value = '';
+  document.getElementById('selectedCam').classList.add('hidden');
+  selectedCode = ''; gpsPos = null; photoData = null; kmlData = null;
+
+  toast('✅ 已保存到本地');
+  updateStats();
+  // 有网时自动同步（原代码已有此逻辑，故录入页无需"立即同步"按钮）
+  if (navigator.onLine) syncNow(true);
+}
+
+// ==================== 同步 ====================
+async function syncNow(silent) {
+  if (!navigator.onLine) { if (!silent) toast('离线中，记录已存本机'); return; }
+  if (!serverUrl) { /* 空=同源，无需校验 */ }
+  const pending = records.filter(r => !r.synced);
+  if (pending.length === 0) { if (!silent) toast('无待同步记录'); return; }
+  if (!silent) toast('同步中...');
+  try {
+    const resp = await fetch(serverUrl.replace(/\/$/, '') + '/api/records', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ records: pending })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const okIds = new Set(data.accepted || pending.map(r => r.id));
+    records.forEach(r => { if (okIds.has(r.id)) r.synced = true; });
+    LS.set('records', records);
+    updateStats();
+    if (!silent) toast(`✅ 已同步 ${okIds.size} 条`);
+  } catch (e) {
+    if (!silent) toast('同步失败（记录仍在本机）');
+  }
+}
+
+// ==================== 从服务器拉取记录（合并到本地）====================
+async function pullFromServer(silent) {
+  if (!navigator.onLine) { if (!silent) toast('离线中，无法拉取'); return; }
+  if (!silent) toast('正在从服务器获取…');
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/records?limit=2000');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    const srv = data.records || [];
+    const localIds = new Set(records.map(x => x.id));
+    let added = 0;
+    for (const s of srv) {
+      if (localIds.has(s.id)) continue;
+      records.push({
+        id: s.id, ts: s.ts, operator: s.operator, code: s.code,
+        ops: Array.isArray(s.ops) ? s.ops : [],
+        note: s.note, lat: s.lat, lng: s.lng,
+        photo: null,
+        kml: s.kml_name ? { name: s.kml_name, size: 0, content: null } : null,
+        hasPhoto: !!s.has_photo, hasKml: !!s.has_kml,
+        synced: true
+      });
+      added++;
+    }
+    // 相机台账同步
+    try {
+      const rc = await fetch(base + '/api/cameras');
+      if (rc.ok) {
+        const dc = await rc.json();
+        (dc.cameras || []).forEach(sc => {
+          const lc = cameras.find(c => c.code === sc.code);
+          if (!lc) cameras.push({ code: sc.code, status: sc.status || 'active', lat: sc.lat, lng: sc.lng, lastMaint: sc.last_maint, lastBy: sc.last_by });
+          else if (sc.last_maint && (!lc.lastMaint || sc.last_maint > lc.lastMaint)) { lc.lastMaint = sc.last_maint; lc.lastBy = sc.last_by; }
+        });
+        LS.set('cameras', cameras);
+      }
+    } catch (e2) {}
+    records.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
+    LS.set('records', records);
+    renderRecords(); updateStats(); renderCamList();
+    if (typeof renderCameras === 'function') { try { renderCameras(); } catch (e3) {} }
+    if (!silent) toast('✅ 拉取完成：新增 ' + added + ' 条（服务器共 ' + srv.length + ' 条）');
+  } catch (e) {
+    if (!silent) toast('拉取失败：' + (e.message || '网络错误'));
+  }
+}
+
+// ==================== 照片/KML 按需从服务器加载（避免一次下载几十MB）====================
+async function loadPhoto(rid) {
+  const rec = records.find(x => x.id === rid);
+  if (!rec) return;
+  if (rec.photo) { viewPhoto(rid); return; }
+  if (!rec.hasPhoto) { toast('该记录没有照片'); return; }
+  toast('正在加载照片…');
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/record/' + encodeURIComponent(rid));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (d.ok && d.record && d.record.photo) {
+      rec.photo = d.record.photo;
+      if (d.record.kml_content && !rec.kml) rec.kml = { name: d.record.kml_name || 'track.kml', size: (d.record.kml_content || '').length, content: d.record.kml_content };
+      LS.set('records', records);
+      renderRecords();
+      viewPhoto(rid);
+      toast('✅ 照片已加载');
+    } else toast('服务器上没有这张照片');
+  } catch (e) { toast('照片加载失败'); }
+}
+
+async function loadKML(rid) {
+  const rec = records.find(x => x.id === rid);
+  if (!rec) return;
+  if (rec.kml && rec.kml.content) { downloadKML(rid); return; }
+  if (!rec.hasKml) { toast('该记录没有轨迹文件'); return; }
+  toast('正在加载KML…');
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/record/' + encodeURIComponent(rid));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (d.ok && d.record && d.record.kml_content) {
+      rec.kml = { name: d.record.kml_name || 'track.kml', size: (d.record.kml_content || '').length, content: d.record.kml_content };
+      LS.set('records', records);
+      downloadKML(rid);
+      toast('✅ KML已加载');
+    } else toast('服务器上没有该轨迹文件');
+  } catch (e) { toast('KML加载失败'); }
+}
+
+// ==================== 一键双向同步（上传本机 + 拉取服务器）====================
+async function syncAll(silent) {
+  if (!navigator.onLine) {
+    if (!silent) toast('离线中，有网络时会自动同步');
+    renderSyncInfo();
+    return;
+  }
+  if (!silent) toast('同步中…');
+  await syncNow(true);          // ① 上传本机未同步的
+  await pullFromServer(true);   // ② 拉取服务器上别人录的
+  LS.set('lastSync', new Date().toISOString());
+  renderSyncInfo();
+  if (!silent) toast('✅ 同步完成');
+}
+
+function renderSyncInfo() {
+  const el = document.getElementById('syncInfo');
+  if (!el) return;
+  const t = LS.get('lastSync', '');
+  const pend = records.filter(r => !r.synced).length;
+  let s = t
+    ? '上次同步 ' + new Date(t).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '尚未同步';
+  if (pend) s += ' · ' + pend + ' 条待上传';
+  el.textContent = s;
+}
+
+// ==================== 管理员模式（默认隐藏管理按钮，防误删）====================
+function isAdmin() { return !!LS.get('adminPass', ''); }
+function adminHeaders(extra) {
+  const h = extra || {};
+  const p = LS.get('adminPass', '');
+  if (p) h['x-admin-pass'] = p;
+  return h;
+}
+async function toggleAdmin() {
+  if (isAdmin()) {
+    if (!confirm('关闭管理员模式？\n（队员将看不到修改/删除按钮）')) return;
+    LS.set('adminPass', '');
+    renderAdminUI(); renderRecords();
+    toast('已关闭管理员模式');
+    return;
+  }
+  const p = prompt('请输入管理员口令：');
+  if (p === null || !p) return;
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/trash', { headers: { 'x-admin-pass': p } });
+    const d = await r.json();
+    if (d.ok) {
+      LS.set('adminPass', p);
+      renderAdminUI(); renderRecords();
+      toast('✅ 管理员模式已开启');
+    } else {
+      toast('❌ 口令错误');
+    }
+  } catch (e) { toast('校验失败，请检查网络'); }
+}
+function renderAdminUI() {
+  const on = isAdmin();
+  const s = document.getElementById('adminState');
+  if (s) s.innerHTML = on
+    ? '✅ <b style="color:#1b5e20">已开启</b> —— 记录和相机台账都可修改 / 删除'
+    : '未开启 —— 队员看不到「修改 / 删除」按钮';
+  const b = document.getElementById('adminBtn');
+  if (b) b.textContent = on ? '🔓 关闭管理员模式' : '🔐 开启管理员模式（需口令）';
+  const tc = document.getElementById('trashCard');
+  if (tc) tc.style.display = on ? '' : 'none';
+  const ac = document.getElementById('addCamBtn');
+  if (ac) ac.style.display = on ? '' : 'none';
+  if (typeof renderCameras === 'function') { try { renderCameras(); } catch (e) {} }
+}
+
+// ==================== 记录管理（修改 / 删除）====================
+let editingId = null;
+const OPS_LIST = ['更换电池', '更换存储卡', '擦拭镜头', '清理杂物', '检查运行', '挪动位置', '新增布设', '移除相机'];
+
+function editRecord(rid) {
+  const r = records.find(x => x.id === rid);
+  if (!r) return;
+  editingId = rid;
+  const opNames = operators.length ? operators : [r.operator].filter(Boolean);
+  document.getElementById('editForm').innerHTML = `
+    <div class="lbl">维护人</div>
+    <select id="editOp">${opNames.map(o => `<option ${o === r.operator ? 'selected' : ''}>${o}</option>`).join('')}</select>
+    <div class="lbl" style="margin-top:12px">操作</div>
+    <div id="editOps" style="display:flex;flex-wrap:wrap;gap:8px">
+      ${OPS_LIST.map(o => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;background:#f5f7f5;padding:7px 11px;border-radius:16px">
+        <input type="checkbox" value="${o}" ${(r.ops || []).includes(o) ? 'checked' : ''}> ${o}</label>`).join('')}
+    </div>
+    <div class="lbl" style="margin-top:12px">备注</div>
+    <textarea id="editNote" rows="2">${r.note || ''}</textarea>
+    <div class="lbl" style="margin-top:12px">坐标（可留空）</div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="editLat" placeholder="纬度" inputmode="decimal" value="${r.lat != null ? r.lat : ''}">
+      <input type="text" id="editLng" placeholder="经度" inputmode="decimal" value="${r.lng != null ? r.lng : ''}">
+    </div>
+    <div style="font-size:12px;color:#999;margin-top:14px">相机编号：${r.code}（不可修改）</div>
+  `;
+  document.getElementById('editModal').classList.remove('hidden');
+}
+
+function closeEdit() {
+  document.getElementById('editModal').classList.add('hidden');
+  editingId = null;
+}
+
+async function saveEdit() {
+  if (!editingId) return;
+  const rid = editingId;
+  const body = {
+    operator: document.getElementById('editOp').value,
+    ops: [...document.querySelectorAll('#editOps input:checked')].map(i => i.value),
+    note: document.getElementById('editNote').value.trim(),
+    lat: parseFloat(document.getElementById('editLat').value) || null,
+    lng: parseFloat(document.getElementById('editLng').value) || null
+  };
+  const r = records.find(x => x.id === rid);
+  if (r) Object.assign(r, body);
+  LS.set('records', records);
+  renderRecords(); updateStats();
+  closeEdit();
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const resp = await fetch(base + '/api/record/' + encodeURIComponent(rid), {
+      method: 'PATCH',
+      headers: adminHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body)
+    });
+    const d = await resp.json().catch(() => ({}));
+    if (d.ok) toast('✅ 已修改（本机+服务器）');
+    else if (d.need_admin) toast('❌ 管理员口令失效，请到设置页重新开启');
+    else toast('⚠️ 本机已改，服务器失败');
+  } catch (e) { toast('⚠️ 本机已改，无网络——服务器未更新'); }
+}
+
+async function deleteRecord(rid) {
+  const r = records.find(x => x.id === rid);
+  if (!r) return;
+  const msg = '确定删除这条记录吗？\n\n相机：' + r.code + '\n维护人：' + r.operator
+    + '\n备注：' + (r.note || '无')
+    + '\n\n💡 删除后会进入「回收站」，可在设置页恢复';
+  if (!confirm(msg)) return;
+  records = records.filter(x => x.id !== rid);
+  LS.set('records', records);
+  renderRecords(); updateStats(); renderCamList();
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const resp = await fetch(base + '/api/record/' + encodeURIComponent(rid), {
+      method: 'DELETE', headers: adminHeaders()
+    });
+    const d = await resp.json().catch(() => ({}));
+    if (d.ok) toast('✅ 已移入回收站（可在设置页恢复）');
+    else if (d.need_admin) toast('❌ 管理员口令失效，请重新开启');
+    else toast('⚠️ 本机已删，服务器失败');
+  } catch (e) { toast('⚠️ 本机已删，无网络——服务器未删除'); }
+}
+
+// ==================== 回收站（管理员）====================
+async function loadTrash() {
+  const box = document.getElementById('trashList');
+  if (!isAdmin()) { toast('请先开启管理员模式'); return; }
+  box.innerHTML = '<div style="color:#999;font-size:13px">加载中…</div>';
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/trash', { headers: adminHeaders() });
+    const d = await r.json();
+    if (!d.ok) { box.innerHTML = '<div style="color:#c00;font-size:13px">' + (d.error || '读取失败') + '</div>'; return; }
+    if (!d.count) { box.innerHTML = '<div style="color:#999;font-size:13px">回收站是空的</div>'; return; }
+    box.innerHTML = d.records.map(t => `
+      <div style="background:#fafafa;border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:8px">
+        <div style="font-size:14px;font-weight:600">${t.code} · ${t.operator}</div>
+        <div style="font-size:12px;color:#888;margin-top:3px">${(t.ops || []).join(' / ')} ${t.note ? '· ' + t.note : ''}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:3px">删除于 ${(t.deleted_at || '').slice(0, 16).replace('T', ' ')}</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="restoreRecord('${t.id}')" style="flex:1;background:#f0f7f0;border:1px solid #cfe3cf;color:#1b5e20;border-radius:7px;padding:6px;font-size:13px;cursor:pointer">↩️ 恢复</button>
+          <button onclick="purgeRecord('${t.id}')" style="flex:1;background:#fdf0f0;border:1px solid #f3cfcf;color:#b3261e;border-radius:7px;padding:6px;font-size:13px;cursor:pointer">✖ 彻底删除</button>
+        </div>
+      </div>`).join('');
+  } catch (e) { box.innerHTML = '<div style="color:#c00;font-size:13px">网络错误</div>'; }
+}
+
+async function restoreRecord(rid) {
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/restore/' + encodeURIComponent(rid), {
+      method: 'POST', headers: adminHeaders()
+    });
+    const d = await r.json();
+    if (d.ok) { toast('✅ 已恢复'); loadTrash(); syncAll(true); }
+    else toast('恢复失败');
+  } catch (e) { toast('恢复失败（网络）'); }
+}
+
+async function purgeRecord(rid) {
+  if (!confirm('彻底删除这条记录？\n\n⚠️ 不可恢复！照片和轨迹也会一起删除。')) return;
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/purge/' + encodeURIComponent(rid), {
+      method: 'DELETE', headers: adminHeaders()
+    });
+    const d = await r.json();
+    if (d.ok) { toast('已彻底删除'); loadTrash(); }
+    else toast('删除失败');
+  } catch (e) { toast('删除失败（网络）'); }
+}
+
+// ==================== 相机台账管理（管理员）====================
+let editingCamCode = null;
+
+function addCamera() {
+  if (!isAdmin()) { toast('请先开启管理员模式'); return; }
+  editingCamCode = '__new__';
+  document.getElementById('camEditTitle').textContent = '➕ 添加相机';
+  document.getElementById('camEditForm').innerHTML = `
+    <div class="lbl">相机编号 *</div>
+    <input type="text" id="camCode" placeholder="如 MTG06 / YS03" autocapitalize="characters">
+    <div class="lbl" style="margin-top:12px">状态</div>
+    <select id="camStatus"><option value="active">在役</option><option value="removed">已移除</option></select>
+    <div class="lbl" style="margin-top:12px">坐标（可选）</div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="camLat" placeholder="纬度" inputmode="decimal">
+      <input type="text" id="camLng" placeholder="经度" inputmode="decimal">
+    </div>
+    <div style="font-size:12px;color:#999;margin-top:14px">💡 要一次加很多台？用「批量导入编号」更快</div>
+  `;
+  document.getElementById('camEditModal').classList.remove('hidden');
+}
+
+function editCamera(code) {
+  if (!isAdmin()) { toast('请先开启管理员模式'); return; }
+  const c = cameras.find(x => x.code === code);
+  if (!c) return;
+  editingCamCode = code;
+  document.getElementById('camEditTitle').textContent = '✏️ 修改相机';
+  document.getElementById('camEditForm').innerHTML = `
+    <div class="lbl">相机编号 *</div>
+    <input type="text" id="camCode" value="${c.code}" autocapitalize="characters">
+    <div class="lbl" style="margin-top:12px">状态</div>
+    <select id="camStatus">
+      <option value="active" ${c.status !== 'removed' ? 'selected' : ''}>在役</option>
+      <option value="removed" ${c.status === 'removed' ? 'selected' : ''}>已移除</option>
+    </select>
+    <div class="lbl" style="margin-top:12px">坐标（可选）</div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="camLat" placeholder="纬度" inputmode="decimal" value="${c.lat != null ? c.lat : ''}">
+      <input type="text" id="camLng" placeholder="经度" inputmode="decimal" value="${c.lng != null ? c.lng : ''}">
+    </div>
+    ${c.lastMaint ? `<div style="font-size:12px;color:#999;margin-top:14px">上次维护：${c.lastMaint} 由 ${c.lastBy || ''}</div>` : ''}
+  `;
+  document.getElementById('camEditModal').classList.remove('hidden');
+}
+
+function closeCamEdit() {
+  document.getElementById('camEditModal').classList.add('hidden');
+  editingCamCode = null;
+}
+
+async function saveCamEdit() {
+  if (!editingCamCode) return;
+  const code = (document.getElementById('camCode').value || '').trim().toUpperCase();
+  if (!code) { toast('请填写相机编号'); return; }
+  const status = document.getElementById('camStatus').value;
+  const lat = parseFloat(document.getElementById('camLat').value) || null;
+  const lng = parseFloat(document.getElementById('camLng').value) || null;
+  const isNew = editingCamCode === '__new__';
+  const oldCode = editingCamCode;
+
+  if (isNew) {
+    if (cameras.some(c => c.code === code)) { toast('编号「' + code + '」已存在'); return; }
+    cameras.push({ code, status, lat, lng, lastMaint: null, lastBy: null });
+  } else {
+    if (code !== oldCode && cameras.some(c => c.code === code)) { toast('编号「' + code + '」已存在'); return; }
+    const c = cameras.find(x => x.code === oldCode);
+    if (!c) return;
+    Object.assign(c, { code, status, lat, lng });
+    if (code !== oldCode) records.forEach(r => { if (r.code === oldCode) r.code = code; });
+  }
+  LS.set('cameras', cameras); LS.set('records', records);
+  renderCameras(); renderCamList(); renderRecords();
+  closeCamEdit();
+
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    if (!isNew && code !== oldCode) {
+      await fetch(base + '/api/camera/' + encodeURIComponent(oldCode), { method: 'DELETE', headers: adminHeaders() });
+    }
+    const resp = await fetch(base + '/api/camera', {
+      method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ code, status, lat, lng })
+    });
+    const d = await resp.json().catch(() => ({}));
+    if (d.ok) toast(isNew ? '✅ 已添加相机' : '✅ 已修改相机');
+    else if (d.need_admin) toast('❌ 管理员口令失效，请重新开启');
+    else toast('⚠️ 本机已改，服务器失败');
+  } catch (e) { toast('⚠️ 本机已改，无网络——服务器未更新'); }
+}
+
+async function delCamera(code) {
+  if (!isAdmin()) { toast('请先开启管理员模式'); return; }
+  const n = records.filter(r => r.code === code).length;
+  const msg = '删除相机「' + code + '」？\n\n'
+    + (n ? '⚠️ 该相机有 ' + n + ' 条维护记录\n记录不会被删除（仍保留在记录列表）\n\n' : '')
+    + '（本机 + 服务器台账都会移除）';
+  if (!confirm(msg)) return;
+  cameras = cameras.filter(x => x.code !== code);
+  LS.set('cameras', cameras);
+  renderCameras(); renderCamList();
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const resp = await fetch(base + '/api/camera/' + encodeURIComponent(code), {
+      method: 'DELETE', headers: adminHeaders()
+    });
+    const d = await resp.json().catch(() => ({}));
+    if (d.ok) toast('✅ 已从台账移除');
+    else if (d.need_admin) toast('❌ 管理员口令失效');
+    else toast('⚠️ 本机已移除，服务器失败');
+  } catch (e) { toast('⚠️ 本机已移除，无网络'); }
+}
+
+// ==================== 记录列表 ====================
+function updateStats() {
+  document.getElementById('stTotal').textContent = records.length;
+  document.getElementById('stPending').textContent = records.filter(r => !r.synced).length;
+  document.getElementById('stSynced').textContent = records.filter(r => r.synced).length;
+}
+function renderRecords() {
+  updateStats();
+  const box = document.getElementById('recList');
+  if (records.length === 0) { box.innerHTML = '<div class="empty">暂无记录</div>'; return; }
+  box.innerHTML = records.slice(0, 100).map(r => `
+    <div class="rec">
+      <div class="t1">${r.code} · ${r.ops.join('/')}
+        <span class="badge ${r.synced ? 'b-active' : 'b-pending'}">${r.synced ? '已同步' : '待同步'}</span></div>
+      <div class="t2">${r.operator} · ${new Date(r.ts).toLocaleString('zh-CN')}</div>
+      ${r.lat ? `<div class="t3">📍 ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</div>` : ''}
+      ${r.note ? `<div class="t3">📝 ${r.note}</div>` : ''}
+      ${r.kml ? `<div class="t3">🗺️ ${r.kml.name} ${r.kml.content
+          ? `<a href="javascript:void(0)" onclick="downloadKML('${r.id}')" style="color:#1b5e20;font-weight:600;margin-left:6px">⬇️下载</a>`
+          : `<a href="javascript:void(0)" onclick="loadKML('${r.id}')" style="color:#b8860b;font-weight:600;margin-left:6px">⬇️从服务器加载</a>`}</div>` : ''}
+      ${r.photo ? `<img src="${r.photo}" onclick="viewPhoto('${r.id}')" style="max-width:100px;max-height:100px;border-radius:8px;margin-top:7px;cursor:pointer;border:1px solid #e0e0e0">` : (r.hasPhoto ? `<button type="button" onclick="loadPhoto('${r.id}')" style="margin-top:7px;background:#fff8e1;border:1px solid #ffe082;border-radius:7px;padding:6px 12px;font-size:13px;color:#8a6d00">📷 加载服务器照片</button>` : '')}
+      ${isAdmin() ? `<div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+        <button type="button" onclick="editRecord('${r.id}')" style="background:#f0f7f0;border:1px solid #cfe3cf;color:#1b5e20;border-radius:7px;padding:5px 13px;font-size:13px;cursor:pointer">✏️ 修改</button>
+        <button type="button" onclick="deleteRecord('${r.id}')" style="background:#fdf0f0;border:1px solid #f3cfcf;color:#b3261e;border-radius:7px;padding:5px 13px;font-size:13px;cursor:pointer">🗑 删除</button>
+      </div>` : ''}
+    </div>`).join('');
+}
+
+// ==================== 相机台账 + 详情 ====================
+function renderCameras() {
+  const q = (document.getElementById('camSearch2').value || '').trim().toUpperCase();
+  let list = cameras;
+  if (q) list = cameras.filter(c => c.code.toUpperCase().includes(q));
+  document.getElementById('camCount').textContent = cameras.length;
+  const box = document.getElementById('camTable');
+  if (list.length === 0) { box.innerHTML = '<div class="empty">' + (cameras.length ? '无匹配相机' : '暂无相机，请先导入编号') + '</div>'; return; }
+  box.innerHTML = list.map(c => `
+    <div class="cam-item" onclick="openDetail('${c.code}')">
+      <div><div class="code">${c.code}</div>
+        <div class="meta">${c.lastMaint ? '上次: ' + c.lastMaint + ' ' + (c.lastBy||'') : '无维护记录'}</div></div>
+      <div class="meta" style="text-align:right"><span class="badge ${c.status==='removed'?'b-removed':'b-active'}">${c.status==='removed'?'已移除':'在役'}</span>
+        ${c.lat ? `<br>${c.lat.toFixed(4)},${c.lng.toFixed(4)}` : ''}
+        ${isAdmin() ? `<div style="display:flex;gap:5px;justify-content:flex-end;margin-top:6px" onclick="event.stopPropagation()">
+          <button type="button" onclick="editCamera('${c.code}')" style="background:#f0f7f0;border:1px solid #cfe3cf;color:#1b5e20;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer">✏️</button>
+          <button type="button" onclick="delCamera('${c.code}')" style="background:#fdf0f0;border:1px solid #f3cfcf;color:#b3261e;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer">🗑</button>
+        </div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function openDetail(code) {
+  const c = cameras.find(x => x.code === code) || {};
+  const logs = records.filter(r => r.code === code);
+  document.getElementById('detTitle').textContent = code;
+  document.getElementById('detInfo').innerHTML = `
+    <div class="k">编号</div><div><b>${code}</b></div>
+    <div class="k">状态</div><div>${c.status === 'removed' ? '🔴 已移除' : '🟢 在役'}</div>
+    <div class="k">坐标</div><div>${c.lat ? c.lat.toFixed(6) + ', ' + c.lng.toFixed(6) : '无'}</div>
+    <div class="k">上次维护</div><div>${c.lastMaint ? c.lastMaint + ' ' + (c.lastBy||'') : '无'}</div>
+    <div class="k">维护次数</div><div>${logs.length} 次</div>`;
+  document.getElementById('detCount').textContent = logs.length;
+  const lb = document.getElementById('detLogs');
+  lb.innerHTML = logs.length === 0 ? '<div class="empty">该相机暂无维护记录</div>' :
+    logs.map(r => `
+      <div class="rec">
+        <div class="t1">${r.ops.join(' / ')}</div>
+        <div class="t2">${r.operator} · ${new Date(r.ts).toLocaleString('zh-CN')}</div>
+        ${r.lat ? `<div class="t3">📍 ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</div>` : ''}
+        ${r.note ? `<div class="t3">📝 ${r.note}</div>` : ''}
+        ${r.photo ? `<div style="margin-top:9px"><img src="${r.photo}" onclick="viewPhoto('${r.id}')" style="max-width:100%;max-height:240px;border-radius:9px;cursor:pointer;border:1px solid #e0e0e0"><div style="font-size:11px;color:#999;margin-top:3px">👆 点图片可放大</div></div>` : (r.hasPhoto ? `<button type="button" onclick="loadPhoto('${r.id}')" class="btn sec" style="margin-top:8px;font-size:13px;padding:9px">📷 从服务器加载照片</button>` : '')}
+        ${r.kml ? `<button type="button" onclick="${r.kml.content ? 'downloadKML' : 'loadKML'}('${r.id}')" class="btn sec" style="margin-top:8px;font-size:13px;padding:9px">⬇️ ${r.kml.content ? '下载轨迹KML（' + (r.kml.size/1024).toFixed(1) + 'KB）' : '从服务器加载轨迹KML'}</button>` : ''}
+      </div>`).join('');
+  document.getElementById('camDetail').classList.remove('hidden');
+}
+function closeDetail() { document.getElementById('camDetail').classList.add('hidden'); }
+
+// ==================== 照片查看 / KML 下载 ====================
+function viewPhoto(rid) {
+  const r = records.find(x => x.id === rid);
+  if (!r || !r.photo) { toast('该记录没有照片'); return; }
+  document.getElementById('photoViewImg').src = r.photo;
+  const v = document.getElementById('photoView');
+  v.classList.remove('hidden');
+  v.style.display = 'flex';
+}
+function closePhotoView() {
+  const v = document.getElementById('photoView');
+  v.classList.add('hidden');
+  v.style.display = '';
+}
+function downloadKML(rid) {
+  const r = records.find(x => x.id === rid);
+  if (!r || !r.kml) { toast('该记录没有轨迹文件'); return; }
+  const blob = new Blob([r.kml.content || ''], { type: 'application/vnd.google-earth.kml+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (r.code || 'cam') + '_' + (r.ts || '').slice(0, 10) + '.kml';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('✅ 已下载: ' + a.download);
+}
+
+function showImport() { document.getElementById('importBox').classList.toggle('hidden'); }
+function doImport() {
+  const lines = document.getElementById('importTxt').value.split('\n').map(s => s.trim()).filter(Boolean);
+  let added = 0;
+  lines.forEach(code => {
+    if (!cameras.find(c => c.code === code)) {
+      cameras.push({ code, status: 'active', lat: null, lng: null, lastMaint: null, lastBy: null }); added++;
+    }
+  });
+  LS.set('cameras', cameras);
+  document.getElementById('importBox').classList.add('hidden');
+  document.getElementById('importTxt').value = '';
+  renderCameras(); renderCamList();
+  toast(`✅ 导入 ${added} 台相机`);
+}
+
+// ==================== 设置 ====================
+function addOperator() {
+  const el = document.getElementById('newOp');
+  const v = (el.value || '').trim();
+  if (!v) { toast('请输入姓名'); return; }
+  if (operators.includes(v)) { toast('「' + v + '」已在名单中'); el.value = ''; return; }
+  operators.push(v);
+  LS.set('operators', operators);
+  el.value = '';
+  renderOperators();
+  toast('✅ 已添加：' + v);
+}
+function delOperator(idx) {
+  const name = operators[idx];
+  if (name === undefined) { toast('未找到该维护人'); return; }
+  if (!confirm('确定删除维护人「' + name + '」吗？\n（已保存的历史记录不受影响）')) return;
+  operators.splice(idx, 1);
+  LS.set('operators', operators);
+  renderOperators();
+  toast('已删除：' + name);
+}
+function renderOperators() {
+  // 录入页的下拉选择
+  document.getElementById('operator').innerHTML = '<option value="">请选择维护人</option>' +
+    operators.map(o => `<option value="${o}">${o}</option>`).join('');
+  // 设置页的名单列表(带删除按钮)
+  // 注意: 用【索引】而不是名字传参, 避免名字里的引号破坏 onclick 属性
+  const box = document.getElementById('opList');
+  if (!box) return;
+  box.innerHTML = operators.length
+    ? operators.map((o, i) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#f5f7f5;border-radius:9px;margin-bottom:7px">
+          <span style="font-size:15px">${o}</span>
+          <button type="button" onclick="delOperator(${i})" style="background:#fee;border:none;color:#c00;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">删除</button>
+        </div>`).join('')
+    : '<div style="color:#999;font-size:13px;padding:6px 0">暂无维护人，请在上方添加</div>';
+}
+// 服务器地址默认为"同源"（空字符串），界面只显示状态，不提供手动编辑
+function renderSrv() {
+  const el = document.getElementById('srvShow');
+  if (el) el.textContent = serverUrl || '（同源 · 本机服务器）';
+}
+async function testServer() {
+  const st = document.getElementById('srvStatus');
+  st.textContent = '检测中…'; st.style.color = '#999';
+  try {
+    const r = await fetch((serverUrl || '').replace(/\/$/, '') + '/api/stats', { method: 'GET' });
+    if (r.ok) { st.textContent = '✅ 连接正常（记录可自动上传）'; st.style.color = '#1b5e20'; }
+    else { st.textContent = '⚠️ 服务器应答 ' + r.status; st.style.color = '#b8860b'; }
+  } catch (e) {
+    st.textContent = '❌ 未连接（网络不通或服务未启动）'; st.style.color = '#c00';
+  }
+}
+function exportJSON() {
+  const blob = new Blob([JSON.stringify({ cameras, records }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '红外相机维护记录_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); toast('已导出');
+}
+function clearAll() {
+  if (confirm('确定清空本机所有数据？不可恢复！')) {
+    ['cameras','records','operators','serverUrl'].forEach(k => localStorage.removeItem('ircam_' + k));
+    location.reload();
+  }
+}
+
+// ==================== 初始化 ====================
+function init() {
+  serverUrl = LS.get('serverUrl', DEFAULT_SERVER);
+  renderSrv();
+  renderOperators(); renderCamList(); updateNet(); updateStats(); renderSyncInfo(); renderAdminUI();
+  if (cameras.length === 0) {
+    ['MTG01','MTG02','MTG03','YS01','YS02'].forEach(c =>
+      cameras.push({ code: c, status: 'active', lat: null, lng: null, lastMaint: null, lastBy: null }));
+    LS.set('cameras', cameras);
+  }
+  renderCamList();
+  // 注册 Service Worker (离线支持)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
+init();
+</script>
+<!-- 照片放大查看器 -->
+<div id="photoView" class="hidden" onclick="closePhotoView()" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.93);z-index:999;align-items:center;justify-content:center;padding:14px">
+  <img id="photoViewImg" style="max-width:100%;max-height:90%;border-radius:10px">
+  <div style="position:absolute;bottom:20px;left:0;right:0;text-align:center;color:#fff;font-size:13px;opacity:.75">点击任意处关闭</div>
+</div>
+
+<!-- ========== 记录编辑二级页 ========== -->
+<div class="overlay hidden" id="editModal">
+  <div class="ov-hdr">
+    <span class="back" onclick="closeEdit()">← 取消</span>
+    <b>✏️ 修改记录</b>
+    <span onclick="saveEdit()" style="margin-left:auto;color:#1b5e20;font-weight:700;cursor:pointer;font-size:15px">保存</span>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <div id="editForm"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 相机编辑二级页（管理员）========== -->
+<div class="overlay hidden" id="camEditModal">
+  <div class="ov-hdr">
+    <span class="back" onclick="closeCamEdit()">← 取消</span>
+    <b id="camEditTitle">编辑相机</b>
+    <span onclick="saveCamEdit()" style="margin-left:auto;color:#1b5e20;font-weight:700;cursor:pointer;font-size:15px">保存</span>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <div id="camEditForm"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

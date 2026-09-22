@@ -1,0 +1,48 @@
+# ===== 数据文件（含真实记录/照片/坐标，绝不提交）=====
+ircam.db
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ===== 证书与私钥（绝不能提交，泄露可被伪造身份）=====
+cert/
+*.pem
+*.key
+*.crt
+*.der
+*.p12
+*.pfx
+
+# ===== Python 运行时 =====
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+ENV/
+*.egg-info/
+
+# ===== 本地配置 / 密钥 =====
+.env
+.env.*
+config.local.*
+secrets.*
+
+# ===== 内部运维文档与脚本（含服务器地址、账号口令，不公开）=====
+docs/
+
+# ===== 导出数据 =====
+export*.json
+export*.csv
+*.xlsx
+
+# ===== 编辑器 / 系统 =====
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
