@@ -195,9 +195,13 @@ ircam/
 ├── server.py       # FastAPI 后端 + SQLite
 ├── sw.js           # Service Worker（离线缓存）
 ├── manifest.json   # PWA 清单
-├── docs/           # 项目文档
-└── .gitignore
+├── LICENSE         # MIT
+├── .gitignore
+└── README.md
 ```
+
+> 运行期产生的 `venv/`、`ircam.db`、`cert/` 与本站部署脚本**已在 `.gitignore` 中排除**。
+> 数据库与证书绝不入库。
 
 ---
 

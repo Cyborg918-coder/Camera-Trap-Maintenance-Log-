@@ -128,6 +128,12 @@
         <input type="text" id="manualLat" placeholder="纬度 40.123456" inputmode="decimal">
         <input type="text" id="manualLng" placeholder="经度 116.123456" inputmode="decimal">
       </div>
+      <div style="font-size:12px;color:#b8860b;margin-top:8px;line-height:1.65">
+        ⚠️ <b>坐标系必须一致</b>：本系统、手机GPS、两步路KML 都用 <b>WGS-84</b>（原始GPS坐标）。<br>
+        若从 <b>高德 / 腾讯 / 微信地图</b> 复制坐标，那是 GCJ-02（火星坐标），
+        在北京山区会偏 <b>300~500 米</b> —— 山里可能直接找错山沟。<br>
+        → 请用上方「📍 获取当前位置」，或从两步路导出点位。
+      </div>
       <button class="btn sec" style="margin-top:6px;font-size:14px" onclick="applyManualGPS()">使用这组坐标</button>
     </div>
     <div style="margin-top:10px">
@@ -138,28 +144,6 @@
     <input type="file" id="photo" accept="image/*" onchange="onPhoto(this)">
     <div class="gps" id="photoBox">未选择照片</div>
     <div style="font-size:12px;color:#999;margin-top:6px">点击后系统会让你选「拍照」或「从相册选」</div>
-  </div>
-
-  <div class="card">
-    <div class="lbl">⑤ 轨迹文件（KML）</div>
-    <label class="file-btn" for="kmlFile">🗺️ 上传KML文件（两步路导出）</label>
-    <input type="file" id="kmlFile" accept=".kml,.xml,application/vnd.google-earth.kml+xml" onchange="importKML(this)">
-    <div class="gps" id="kmlBox">未上传</div>
-    <button class="btn sec" style="margin-top:8px;font-size:14px" onclick="toggleKmlHelp()">❓ 微信里的KML怎么上传？点这里看步骤</button>
-    <div id="kmlHelp" class="hidden" style="margin-top:8px;background:#fffbea;border:1px solid #ffe08a;border-radius:9px;padding:12px;font-size:13px;line-height:1.75;color:#664d03">
-      <b>为什么点「上传」看不到微信文件？</b><br>
-      手机浏览器只能访问手机的「相册 / 下载 / 文件」这几个公共位置，
-      看不到微信自己的专属文件夹（这是手机系统的限制，所有网页都一样，不是本程序的问题）。<br><br>
-      <b>【安卓】3步：</b><br>
-      ① 微信 → 文件传输助手 → 点开那个KML文件<br>
-      ② 右上角「…」→ 选「<b>保存到手机</b>」<br>
-      ③ 回网页 → 点「上传KML文件」→ 在文件选择器里选「<b>下载</b>」分类 → 找到它<br><br>
-      <b>【iPhone】3步：</b><br>
-      ① 微信 → 文件传输助手 → 点开KML<br>
-      ② 右上角「…」→「用其他应用打开」→「<b>存储到"文件"</b>」<br>
-      ③ 回网页 → 点「上传KML文件」→「<b>浏览</b>」→「我的iPhone」→ 找到它<br><br>
-      <span style="color:#0a3622">💡 电脑上操作最简单：直接点上传按钮，把KML文件选中即可。</span>
-    </div>
   </div>
 
   <button class="btn" onclick="saveRecord()">💾 保存记录（离线可存）</button>
@@ -204,15 +188,47 @@
   <div class="card" id="camTable"></div>
 </div>
 
-<!-- ========== 标签4: 设置 ========== -->
+<!-- ========== 标签4: 轨迹库 ========== -->
+<div class="wrap hidden" id="page-routes">
+  <div class="card">
+    <div class="lbl">轨迹库（共 <span id="rtCount">0</span> 条线路）</div>
+    <div style="font-size:12px;color:#888;line-height:1.75;margin-bottom:10px">
+      一条<b>轨迹</b> = 一条巡查线路，包含 KML 文件 + 沿途的相机。<br>
+      🚶 <b>出发前</b>：在这里下载线路 KML，导入两步路导航<br>
+      🏠 <b>下山后</b>：更新这条线路的最新轨迹，确认关联相机
+    </div>
+    <button class="btn" onclick="addRoute()">➕ 新建轨迹</button>
+  </div>
+  <div class="card" id="rtTable"></div>
+</div>
+
+<!-- ========== 轨迹详情二级页 ========== -->
+<div class="overlay hidden" id="rtDetailModal">
+  <div class="ov-hdr">
+    <span class="back" onclick="closeRouteDetail()">← 返回</span>
+    <b id="rtDetailTitle">轨迹详情</b>
+    <span onclick="saveRouteEdit()" style="margin-left:auto;color:#1b5e20;font-weight:700;cursor:pointer;font-size:15px">保存</span>
+  </div>
+  <div class="wrap">
+    <div id="rtDetailBody"></div>
+  </div>
+</div>
+
+<!-- ========== 标签5: 设置 ========== -->
 <div class="wrap hidden" id="page-set">
   <div class="card">
     <div class="lbl">维护人名单</div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <input type="text" id="newOp" placeholder="输入姓名后点添加" style="flex:1">
-      <button class="btn" style="width:auto;padding:11px 22px;margin:0" onclick="addOperator()">添加</button>
+    <div id="opManageBox" style="display:none">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="newOp" placeholder="输入姓名后点添加" style="flex:1">
+        <button class="btn" style="width:auto;padding:11px 22px;margin:0" onclick="addOperator()">添加</button>
+      </div>
+      <div style="font-size:12px;color:#1b5e20;margin-top:8px">🔐 管理员模式已开启，可增删名单（改动会同步给全体队员）</div>
     </div>
     <div id="opList" style="margin-top:12px"></div>
+    <div id="opHint" style="font-size:12px;color:#999;margin-top:10px;line-height:1.6">
+      名单由管理员统一维护，改动会同步给全体队员。<br>如需增删，请联系管理员。
+    </div>
   </div>
   <div class="card">
     <div class="lbl">同步状态</div>
@@ -244,7 +260,10 @@
   <div class="card">
     <div class="lbl">数据管理</div>
     <button class="btn sec" onclick="exportJSON()">⬇️ 导出JSON备份（含照片/轨迹）</button>
-    <button class="btn warn" onclick="clearAll()">🗑 清空本地数据</button>
+    <button class="btn warn" onclick="clearAll()">🗑 清空本机缓存并重新加载</button>
+    <div style="font-size:12px;color:#999;margin-top:8px;line-height:1.6">
+      服务器上的数据不受影响。用于：本机残留了已删除的旧数据时，强制以服务器为准。
+    </div>
     <div style="font-size:12px;color:#999;margin-top:9px">建议每次下山后导出一次备份（手机丢失/换机时可完整恢复）</div>
   </div>
   <div class="card">
@@ -279,8 +298,9 @@
 <div class="tabs">
   <div class="tab on" onclick="switchTab(0,this)"><span class="icon">✏️</span>记录</div>
   <div class="tab" onclick="switchTab(1,this)"><span class="icon">📋</span>记录列表</div>
-  <div class="tab" onclick="switchTab(2,this)"><span class="icon">📷</span>相机台账</div>
-  <div class="tab" onclick="switchTab(3,this)"><span class="icon">⚙️</span>设置</div>
+  <div class="tab" onclick="switchTab(2,this)"><span class="icon">📷</span>相机</div>
+  <div class="tab" onclick="switchTab(3,this)"><span class="icon">🗺️</span>轨迹</div>
+  <div class="tab" onclick="switchTab(4,this)"><span class="icon">⚙️</span>设置</div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -289,10 +309,84 @@
 // ==================== 数据层 ====================
 const LS = {
   get(k, d) { try { return JSON.parse(localStorage.getItem('ircam_' + k)) ?? d; } catch(e) { return d; } },
-  set(k, v) { localStorage.setItem('ircam_' + k, JSON.stringify(v)); }
+  set(k, v) {
+    // 【2026-09-29 加固】localStorage 单域名上限约 5MB；照片 base64 单张 150~250KB，
+    // 野外连续巡查 20 台相机就可能写满。原实现未捕获异常 → 保存中断、界面假死、
+    // 后续所有记录无法存盘（野外数据不可逆丢失）。
+    try {
+      localStorage.setItem('ircam_' + k, JSON.stringify(v));
+      return true;
+    } catch (e) {
+      const isQuota = e && (e.name === 'QuotaExceededError' ||
+                            e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22);
+      if (!isQuota) { console.warn('[LS.set] 写入失败:', e); return false; }
+      // 应急1：剥离【已同步】记录的照片/KML大文本（服务器上有备份，可按需拉取），重试
+      if (k === 'records' && Array.isArray(v)) {
+        try {
+          const pruned = v.map(r => r.synced
+            ? Object.assign({}, r, {
+                photo: null, hasPhoto: r.hasPhoto || !!r.photo,
+                kml: r.kml ? { name: r.kml.name, size: 0, content: null } : null,
+                hasKml: r.hasKml || !!(r.kml && r.kml.content)
+              })
+            : r);
+          localStorage.setItem('ircam_' + k, JSON.stringify(pruned));
+          console.warn('[LS.set] 存储超限 → 已剥离已同步记录的照片后写入');
+          if (typeof toast === 'function') toast('⚠️ 本机存储紧张，已自动清理已上传的照片（服务器有备份）');
+          return true;
+        } catch (e2) {}
+      }
+      alert('⚠️ 手机本地存储已满！\n\n请先联网同步（把记录传到服务器）再继续录入。\n否则新记录可能无法保存。');
+      return false;
+    }
+  }
 };
+// ==================== HTML 转义（安全）====================
+// 【2026-09-29 加固】所有"用户输入"渲染进 innerHTML 前必须过这个函数。
+// 不做转义的两个后果：
+//   ① 误伤：备注里写"<相机坏了>"，页面显示会错乱甚至整块消失
+//   ② 攻击：队员可注入 <img src=x onerror="..."> 窃取管理员口令/篡改数据
+// 需要转义的字段：相机编号、维护人、备注、操作项、轨迹名称、KML文件名
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// 【2026-09-29 补】照片协议白名单。
+// 渲染 <img src="..."> 前只允许 data:image/*（正常拍照/选图的结果）。
+// 目的：即便有人往 API 塞 data:text/html 或 javascript: 之类的畸形串，
+// 也不会被当作图片地址渲染（img 标签本身不执行 HTML，但白名单是更稳的防线）。
+function safePhoto(p) {
+  return (typeof p === 'string' && p.startsWith('data:image/')) ? p : '';
+}
+
 let cameras = LS.get('cameras', []);
 let records = LS.get('records', []);
+
+// ============ 缓存版本迁移（2026-09-29）============
+// 背景：管理员在服务器清理了测试数据后，队员手机上的旧缓存必须同步清掉，
+//       否则旧测试记录/相机会在页面上"阴魂不散"。
+// 策略：版本号变化时只保留"本机未同步"的记录；已同步记录与相机清空，随后由服务器重拉。
+(function migrateCache() {
+  const VER = '2026-09-29-clean-test-data';
+  try { if (LS.get('cacheVer') === VER) return; } catch (e) { return; }
+  try {
+    const before = (records || []).length;
+    records = (records || []).filter(r => !r.synced);   // 只保留未上传的
+    const droppedR = before - records.length;
+    const droppedC = (cameras || []).length;
+    cameras = [];                                       // 相机由服务器重拉
+    LS.set('records', records);
+    LS.set('cameras', cameras);
+    LS.set('cacheVer', VER);
+    console.log(`[缓存迁移] 清除已同步记录 ${droppedR} 条、相机 ${droppedC} 台；保留未同步记录 ${records.length} 条`);
+  } catch (e) {}
+})();
 let operators = LS.get('operators', []);
 // 同步服务器地址：空 = 与页面同源（页面和API在同一服务器，队员无需配置）
 const DEFAULT_SERVER = '';
@@ -300,13 +394,15 @@ let serverUrl = LS.get('serverUrl', DEFAULT_SERVER);
 let selectedCode = '', gpsPos = null, photoData = null, kmlData = null;
 
 // ==================== 标签 ====================
-const pages = ['page-log','page-list','page-cams','page-set'];
+const pages = ['page-log','page-list','page-cams','page-routes','page-set'];
 function switchTab(i, el) {
   pages.forEach((p, j) => document.getElementById(p).classList.toggle('hidden', i !== j));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
   el.classList.add('on');
+  // 先渲染本机缓存（立即出内容），再后台刷新最新数据
   if (i === 1) renderRecords();
-  if (i === 2) renderCameras();
+  if (i === 2) { renderCameras(); syncRouteMap(true); }
+  if (i === 3) { renderRoutes(); syncRoutes(true); }
 }
 
 // ==================== 网络 ====================
@@ -338,9 +434,9 @@ function renderCamList(q = '') {
   if (q) list = list.filter(c => c.code.toUpperCase().includes(q));
   if (list.length === 0) { box.innerHTML = '<div class="empty">无匹配相机<br>请到"相机台账"导入编号</div>'; return; }
   box.innerHTML = list.slice(0, 50).map(c => `
-    <div class="cam-item" onclick="pickCam('${c.code}')">
-      <div><div class="code">${c.code}</div>
-        <div class="meta">${c.lastMaint ? '上次: ' + c.lastMaint + ' ' + (c.lastBy||'') : '无维护记录'}</div></div>
+    <div class="cam-item" data-code="${esc(c.code)}" onclick="pickCam(this.dataset.code)">
+      <div><div class="code">${esc(c.code)}</div>
+        <div class="meta">${esc(c.lastMaint ? '上次: ' + c.lastMaint + ' ' + (c.lastBy||'') : '无维护记录')}</div></div>
       <div class="meta">${c.lat ? '📍' : ''}</div>
     </div>`).join('');
 }
@@ -351,9 +447,9 @@ function pickCam(code) {
   document.getElementById('camList').innerHTML = '';
   const box = document.getElementById('selectedCam');
   box.classList.remove('hidden');
-  box.innerHTML = `<b>已选: ${code}</b> · ${c.status === 'removed' ? '已移除' : '在役'}
+  box.innerHTML = `<b>已选: ${esc(code)}</b> · ${c.status === 'removed' ? '已移除' : '在役'}
     ${c.lat ? `<br>台账坐标: ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : '<br>台账无坐标'}
-    ${c.lastMaint ? `<br>上次维护: ${c.lastMaint} ${c.lastBy||''}` : '<br>无维护记录'}`;
+    ${c.lastMaint ? `<br>上次维护: ${c.lastMaint} ${esc(c.lastBy||'')}` : '<br>无维护记录'}`;
 }
 
 // ==================== 操作勾选 ====================
@@ -362,7 +458,12 @@ function opChange(el) { el.closest('.op').classList.toggle('on', el.checked); }
 // ==================== GPS ====================
 function getGPS() {
   if (!navigator.geolocation) { toast('此设备不支持定位'); return; }
-  toast('定位中...');
+  // 【2026-09-29】野外实际情况：山谷/密林/阴天冷启动搜星常需 30~60 秒。
+  // 原来 timeout=15 秒 → 频繁"定位失败"，逼队员手动输入。
+  // 现在：延长到 45 秒 + 明确告知正在搜星（避免队员以为卡死而放弃）。
+  document.getElementById('gpsBox').innerHTML =
+    '🛰️ 正在搜星定位…<br><span style="color:#b8860b">野外可能需要 30~60 秒，请到开阔处稍等</span>';
+  toast('搜星中，请稍候…');
   navigator.geolocation.getCurrentPosition(
     p => {
       gpsPos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
@@ -375,11 +476,14 @@ function getGPS() {
       if (isHttp) {
         document.getElementById('gpsBox').innerHTML = '❌ 定位失败<br><span style="color:#b8860b">原因：当前是 HTTP 访问，浏览器禁止网页获取定位（与离线缓存同一个限制，都需 HTTPS）</span><br><span style="color:#666">→ 请用下面的「✏️ 手动输入经纬度」</span>';
         toast('HTTP下浏览器禁止定位，请手动输入');
+      } else if (e && e.code === 3) {
+        document.getElementById('gpsBox').innerHTML = '⏱️ 搜星超时（45秒）<br><span style="color:#666">→ 可再试一次（走到开阔处），或用「✏️ 手动输入经纬度」</span>';
+        toast('搜星超时，可重试或手动输入');
       } else {
-        toast('定位失败: ' + e.message + '（可试手动输入）');
+        toast('定位失败: ' + (e && e.message || '') + '（可试手动输入）');
       }
     },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    { enableHighAccuracy: true, timeout: 45000, maximumAge: 0 }
   );
 }
 
@@ -419,7 +523,7 @@ function onPhoto(input) {
       canvas.width = img.width * scale; canvas.height = img.height * scale;
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       photoData = canvas.toDataURL('image/jpeg', 0.7);
-      document.getElementById('photoBox').textContent = `✅ ${f.name} (压缩后 ${(photoData.length/1024/1.37).toFixed(0)}KB)`;
+      document.getElementById('photoBox').textContent = `✅ ${esc(f.name)} (压缩后 ${(photoData.length/1024/1.37).toFixed(0)}KB)`;
     };
     img.src = e.target.result;
   };
@@ -432,7 +536,7 @@ function importKML(input) {
   const reader = new FileReader();
   reader.onload = e => {
     kmlData = { name: f.name, size: f.size, content: e.target.result.slice(0, 200000) };
-    document.getElementById('kmlBox').textContent = `✅ ${f.name} (${(f.size/1024).toFixed(1)}KB)`;
+    document.getElementById('kmlBox').textContent = `✅ ${esc(f.name)} (${(f.size/1024).toFixed(1)}KB)`;
     toast('KML已附加');
   };
   reader.readAsText(f);
@@ -448,14 +552,31 @@ function saveRecord() {
   const note = document.getElementById('note').value.trim();
 
   const rec = {
-    id: 'R' + Date.now() + Math.random().toString(36).slice(2, 6),
+    // 【2026-09-29】ID 改用密码学安全随机（crypto.randomUUID），
+    // 避免两名队员在同一毫秒操作时撞 ID（撞了会导致记录互相覆盖）
+    id: (window.crypto && crypto.randomUUID)
+          ? 'R' + crypto.randomUUID().replace(/-/g, '').slice(0, 17)
+          : 'R' + Date.now() + Math.random().toString(36).slice(2, 8),
     ts: new Date().toISOString(),
     operator, code: selectedCode, ops: ops.length ? ops : ['轨迹上传'], note,
     lat: gpsPos ? gpsPos.lat : null, lng: gpsPos ? gpsPos.lng : null,
     photo: photoData, kml: kmlData, synced: false
   };
   records.unshift(rec);
-  LS.set('records', records);
+  // 【2026-09-29 修复 P0】必须检查写入结果！
+  // 原实现忽略返回值：localStorage 写满时 LS.set 返回 false 并弹窗，
+  // 但代码继续往下走 → 清空表单 + 弹"✅ 已保存到本地"（假成功）。
+  // 队员以为存好了，实际这条记录的坐标/备注/照片从未落盘，
+  // 浏览器进程一旦被系统回收（手机省电机制）就永久丢失。
+  if (!LS.set('records', records)) {
+    records.shift();          // 写入失败 → 从内存队列撤销，保持前后一致
+    alert('❌ 本地存储已满，本条记录【保存失败】！\n\n' +
+          '请先不要关闭页面，依次尝试：\n' +
+          '· 联网后点「同步」，把已有记录上传到服务器\n' +
+          '· 或清理部分旧记录后重新保存\n\n' +
+          '你填写的内容仍保留在页面上，请勿直接离开本页。');
+    return;                   // 不更新相机台账、不清空表单、不弹成功提示
+  }
 
   const cam = cameras.find(c => c.code === selectedCode);
   if (cam) {
@@ -496,10 +617,26 @@ async function syncNow(silent) {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     const okIds = new Set(data.accepted || pending.map(r => r.id));
-    records.forEach(r => { if (okIds.has(r.id)) r.synced = true; });
+    const skipIds = new Set(data.skipped || []);
+    records.forEach(r => {
+      // 【2026-09-29 修复】skipped 分支也必须释放照片！
+      // 场景：客户端发出请求但没收到回包（网络假超时），服务端实际已入库。
+      // 下次重试时服务端返回 skipped；若此处不释放照片，
+      // 这条记录将再也不会触发同步，其几百 KB 的 base64 会永久占着 localStorage
+      // （等于把 P0-3 的存储优化又漏掉了）。
+      const done = okIds.has(r.id) || skipIds.has(r.id);
+      if (!done) return;
+      r.synced = true;
+      if (r.photo) { r.hasPhoto = true; r.photo = null; }
+      if (r.kml && r.kml.content) { r.hasKml = true; r.kml = { name: r.kml.name, size: 0, content: null }; }
+      if (skipIds.has(r.id)) r._rejected = true;
+    });
     LS.set('records', records);
     updateStats();
-    if (!silent) toast(`✅ 已同步 ${okIds.size} 条`);
+    if (!silent) {
+      const sk = skipIds.size;
+      toast(sk ? `✅ 已同步 ${okIds.size} 条（${sk} 条被服务器拒绝覆盖）` : `✅ 已同步 ${okIds.size} 条`);
+    }
   } catch (e) {
     if (!silent) toast('同步失败（记录仍在本机）');
   }
@@ -530,12 +667,35 @@ async function pullFromServer(silent) {
       });
       added++;
     }
-    // 相机台账同步
+    // 【服务器为准】清理本地已被服务器删除的记录（2026-09-29 修订）
+    // 原实现靠 srvIds 差集推断 —— 但 /api/records 有 limit（前端传2000），
+    // 记录超过 2000 条后早期有效记录不在返回列表里，会被误判成"管理员已删除"
+    // 而从队员手机上抹掉（不可逆）。现改为拉取【明确的已删除 ID 名单】，只删这些。
+    let removed = 0;
+    try {
+      const rd = await fetch(base + '/api/deleted-record-ids');
+      if (rd.ok) {
+        const dd = await rd.json();
+        const delIds = new Set(dd.deleted_ids || []);
+        if (delIds.size) {
+          const before = records.length;
+          records = records.filter(r => !delIds.has(r.id));
+          removed = before - records.length;
+        }
+      }
+    } catch (e4) {}
+    // 相机台账同步（2026-09-29 改为"服务器为准"，与记录一致）
+    // 原因：原逻辑"只加不删"→ 服务器已删除的相机在队员手机上会永久残留
     try {
       const rc = await fetch(base + '/api/cameras');
       if (rc.ok) {
         const dc = await rc.json();
-        (dc.cameras || []).forEach(sc => {
+        const srvCams = dc.cameras || [];
+        const srvCodes = new Set(srvCams.map(c => c.code));
+        // 先剔除"本机有、服务器没有"的相机（管理员已在服务器端删除）
+        cameras = cameras.filter(c => srvCodes.has(c.code));
+        // 再合并服务器相机
+        srvCams.forEach(sc => {
           const lc = cameras.find(c => c.code === sc.code);
           if (!lc) cameras.push({ code: sc.code, status: sc.status || 'active', lat: sc.lat, lng: sc.lng, lastMaint: sc.last_maint, lastBy: sc.last_by });
           else if (sc.last_maint && (!lc.lastMaint || sc.last_maint > lc.lastMaint)) { lc.lastMaint = sc.last_maint; lc.lastBy = sc.last_by; }
@@ -604,8 +764,10 @@ async function syncAll(silent) {
     return;
   }
   if (!silent) toast('同步中…');
-  await syncNow(true);          // ① 上传本机未同步的
-  await pullFromServer(true);   // ② 拉取服务器上别人录的
+  await syncNow(true);          // ① 先上传本机未同步的
+  await pullFromServer(true);   // ② 再拉取服务器上的
+  // ③④⑤ 相互独立 → 并行执行，避免"轨迹库"排在队列末尾要等很久
+  await Promise.all([syncOperators(true), syncRoutes(true), syncRouteMap(true)]);
   LS.set('lastSync', new Date().toISOString());
   renderSyncInfo();
   if (!silent) toast('✅ 同步完成');
@@ -667,6 +829,12 @@ function renderAdminUI() {
   const ac = document.getElementById('addCamBtn');
   if (ac) ac.style.display = on ? '' : 'none';
   if (typeof renderCameras === 'function') { try { renderCameras(); } catch (e) {} }
+  if (typeof renderOperators === 'function') { try { renderOperators(); } catch (e) {} }
+  // 轨迹详情页若开着 → 重新渲染（名称/备注 readonly、删除卡片的显隐随权限变化）
+  if (typeof editingRouteId !== 'undefined' && editingRouteId
+      && typeof openRouteDetail === 'function') {
+    try { openRouteDetail(editingRouteId); } catch (e) {}
+  }
 }
 
 // ==================== 记录管理（修改 / 删除）====================
@@ -680,20 +848,20 @@ function editRecord(rid) {
   const opNames = operators.length ? operators : [r.operator].filter(Boolean);
   document.getElementById('editForm').innerHTML = `
     <div class="lbl">维护人</div>
-    <select id="editOp">${opNames.map(o => `<option ${o === r.operator ? 'selected' : ''}>${o}</option>`).join('')}</select>
+    <select id="editOp">${opNames.map(o => `<option ${esc(o === r.operator ? 'selected' : '')}>${esc(o)}</option>`).join('')}</select>
     <div class="lbl" style="margin-top:12px">操作</div>
     <div id="editOps" style="display:flex;flex-wrap:wrap;gap:8px">
       ${OPS_LIST.map(o => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;background:#f5f7f5;padding:7px 11px;border-radius:16px">
-        <input type="checkbox" value="${o}" ${(r.ops || []).includes(o) ? 'checked' : ''}> ${o}</label>`).join('')}
+        <input type="checkbox" value="${o}" ${esc((r.ops || []).includes(o) ? 'checked' : '')}> ${o}</label>`).join('')}
     </div>
     <div class="lbl" style="margin-top:12px">备注</div>
-    <textarea id="editNote" rows="2">${r.note || ''}</textarea>
+    <textarea id="editNote" rows="2">${esc(r.note || '')}</textarea>
     <div class="lbl" style="margin-top:12px">坐标（可留空）</div>
     <div style="display:flex;gap:8px">
       <input type="text" id="editLat" placeholder="纬度" inputmode="decimal" value="${r.lat != null ? r.lat : ''}">
       <input type="text" id="editLng" placeholder="经度" inputmode="decimal" value="${r.lng != null ? r.lng : ''}">
     </div>
-    <div style="font-size:12px;color:#999;margin-top:14px">相机编号：${r.code}（不可修改）</div>
+    <div style="font-size:12px;color:#999;margin-top:14px">相机编号：${esc(r.code)}（不可修改）</div>
   `;
   document.getElementById('editModal').classList.remove('hidden');
 }
@@ -767,8 +935,8 @@ async function loadTrash() {
     if (!d.count) { box.innerHTML = '<div style="color:#999;font-size:13px">回收站是空的</div>'; return; }
     box.innerHTML = d.records.map(t => `
       <div style="background:#fafafa;border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:8px">
-        <div style="font-size:14px;font-weight:600">${t.code} · ${t.operator}</div>
-        <div style="font-size:12px;color:#888;margin-top:3px">${(t.ops || []).join(' / ')} ${t.note ? '· ' + t.note : ''}</div>
+        <div style="font-size:14px;font-weight:600">${esc(t.code)} · ${esc(t.operator)}</div>
+        <div style="font-size:12px;color:#888;margin-top:3px">${esc((t.ops || []).join(' / '))} ${esc(t.note ? '· ' + t.note : '')}</div>
         <div style="font-size:11px;color:#aaa;margin-top:3px">删除于 ${(t.deleted_at || '').slice(0, 16).replace('T', ' ')}</div>
         <div style="display:flex;gap:8px;margin-top:8px">
           <button onclick="restoreRecord('${t.id}')" style="flex:1;background:#f0f7f0;border:1px solid #cfe3cf;color:#1b5e20;border-radius:7px;padding:6px;font-size:13px;cursor:pointer">↩️ 恢复</button>
@@ -833,7 +1001,7 @@ function editCamera(code) {
   document.getElementById('camEditTitle').textContent = '✏️ 修改相机';
   document.getElementById('camEditForm').innerHTML = `
     <div class="lbl">相机编号 *</div>
-    <input type="text" id="camCode" value="${c.code}" autocapitalize="characters">
+    <input type="text" id="camCode" value="${esc(c.code)}" autocapitalize="characters">
     <div class="lbl" style="margin-top:12px">状态</div>
     <select id="camStatus">
       <option value="active" ${c.status !== 'removed' ? 'selected' : ''}>在役</option>
@@ -844,7 +1012,7 @@ function editCamera(code) {
       <input type="text" id="camLat" placeholder="纬度" inputmode="decimal" value="${c.lat != null ? c.lat : ''}">
       <input type="text" id="camLng" placeholder="经度" inputmode="decimal" value="${c.lng != null ? c.lng : ''}">
     </div>
-    ${c.lastMaint ? `<div style="font-size:12px;color:#999;margin-top:14px">上次维护：${c.lastMaint} 由 ${c.lastBy || ''}</div>` : ''}
+    ${c.lastMaint ? `<div style="font-size:12px;color:#999;margin-top:14px">上次维护：${c.lastMaint} 由 ${esc(c.lastBy || '')}</div>` : ''}
   `;
   document.getElementById('camEditModal').classList.remove('hidden');
 }
@@ -916,6 +1084,350 @@ async function delCamera(code) {
   } catch (e) { toast('⚠️ 本机已移除，无网络'); }
 }
 
+// ==================== 轨迹库（巡查线路）====================
+// 一条轨迹 = 一条巡查线路（KML + 沿途相机）。所有队员都可增删改；删除为软删除。
+// 列表本地缓存（localStorage）→ 打开页面/切回标签立即显示，再后台刷新
+let routes = LS.get('routesCache', []);        // 轨迹列表
+let routeMap = LS.get('routeMapCache', {});    // {相机编号: [{id,name}]} 供台账显示
+let editingRouteId = null;
+let routesLoaded = false;                      // 是否已从服务器成功拉取过
+
+async function syncRoutes(silent) {
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/routes');
+    const d = await r.json();
+    if (d.ok) {
+      routes = d.routes || [];
+      LS.set('routesCache', routes);
+      routesLoaded = true;
+      renderRoutes();
+    }
+  } catch (e) { if (!silent) toast('轨迹库同步失败（可能离线）'); }
+}
+
+async function syncRouteMap(silent) {
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/routes-map');
+    const d = await r.json();
+    if (d.ok) {
+      routeMap = d.map || {};
+      LS.set('routeMapCache', routeMap);
+      renderCameras();
+    }
+  } catch (e) { if (!silent) toast('线路映射同步失败'); }
+}
+
+function renderRoutes() {
+  const cnt = document.getElementById('rtCount');
+  if (cnt) cnt.textContent = routes.length;
+  const box = document.getElementById('rtTable');
+  if (!box) return;
+  if (!routes.length) {
+    box.innerHTML = routesLoaded
+      ? '<div style="color:#999;font-size:13px;padding:16px 0;text-align:center;line-height:1.9">'
+        + '还没有轨迹<br><span style="font-size:12px">巡查结束后，点上方「➕ 新建轨迹」把线路建起来</span></div>'
+      : '<div style="color:#999;font-size:13px;padding:16px 0;text-align:center;line-height:1.9">'
+        + '⏳ 正在读取轨迹…<br><span style="font-size:12px">（离线时显示本机缓存）</span></div>';
+    return;
+  }
+  box.innerHTML = routes.map(r => `
+    <div class="cam-item" onclick="openRouteDetail('${r.id}')">
+      <div style="flex:1">
+        <div class="code">🗺️ ${esc(r.name)}</div>
+        <div class="meta">${esc(r.camera_count ? r.cameras.join(' / ') : '未关联相机')}</div>
+        ${r.note ? `<div class="meta" style="color:#aaa">${esc(r.note)}</div>` : ''}
+      </div>
+      <div class="meta" style="text-align:right;min-width:80px">
+        ${r.has_kml ? '<span class="badge b-active">有KML</span>' : '<span class="badge b-removed">无KML</span>'}
+        <div style="font-size:11px;color:#aaa;margin-top:4px">
+          ${r.kml_updated_at ? r.kml_updated_at.slice(5, 16).replace('T', ' ') : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function addRoute() {
+  const name = prompt('新建轨迹\n\n请输入线路名称（如「MTG北线」「西沟线」）：');
+  if (name === null) return;
+  const nm = (name || '').trim();
+  if (!nm) { toast('名称不能为空'); return; }
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/routes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: nm })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast('✅ 已创建：' + nm);
+      await syncRoutes(true);
+      openRouteDetail(d.id);
+    } else toast('❌ ' + (d.error || '创建失败'));
+  } catch (e) { toast('创建失败（网络）'); }
+}
+
+function openRouteDetail(rid) {
+  const r = routes.find(x => x.id === rid);
+  if (!r) return;
+  editingRouteId = rid;
+  document.getElementById('rtDetailTitle').textContent = '🗺️ ' + r.name;
+  const cams = cameras.map(c => c.code);
+  document.getElementById('rtDetailBody').innerHTML = `
+    <div class="card">
+      <div class="lbl">线路名称</div>
+      <input type="text" id="rtName" value="${esc(r.name)}"${isAdmin() ? '' : ' readonly style="background:#f5f5f5;color:#666"'}>
+      <div class="lbl" style="margin-top:12px">备注（入口怎么走 / 注意事项）</div>
+      <textarea id="rtNote" rows="2" placeholder="如：入口在XX桥，停车后步行15分钟"${isAdmin() ? '' : ' readonly style="background:#f5f5f5;color:#666"'}>${esc(r.note || '')}</textarea>
+      ${isAdmin()
+        ? '<button class="btn" style="margin-top:12px" onclick="saveRouteEdit()">💾 保存名称和备注</button>'
+        : '<div style="font-size:12px;color:#999;margin-top:10px;line-height:1.7">🔒 名称和备注由管理员维护<br>（成员可以上传轨迹、关联相机）</div>'}
+    </div>
+
+    <div class="card">
+      <div class="lbl">轨迹文件（KML）</div>
+      <div style="font-size:13px;color:#666;line-height:1.9;margin-bottom:10px">
+        ${r.has_kml
+          ? `状态：<b style="color:#1b5e20">已有 KML</b>（${(r.kml_size / 1024).toFixed(1)}KB）<br>
+             更新：${(r.kml_updated_at || '').slice(0, 16).replace('T', ' ')} ${esc(r.kml_updated_by ? '由 ' + r.kml_updated_by : '')}`
+          : '状态：<b style="color:#b3261e">还没有 KML</b>（下山后上传最新轨迹）'}
+      </div>
+      ${r.has_kml ? `<button class="btn sec" style="margin-bottom:10px" onclick="downloadRouteKML('${r.id}')">⬇️ 下载最新 KML（导入两步路导航）</button>` : ''}
+      <label class="file-btn" for="rtKmlFile" style="display:block">${r.has_kml ? '🔄 更新轨迹 KML（上传新文件）' : '📤 上传 KML 文件'}</label>
+      <input type="file" id="rtKmlFile" accept=".kml,.xml,application/vnd.google-earth.kml+xml" onchange="uploadRouteKML(this)">
+      <div style="font-size:12px;color:#999;margin-top:8px">
+        💡 更新时旧版会自动存为历史（保留最近 3 版，可回退）
+      </div>
+      <button class="btn sec" style="margin-top:10px" onclick="showRouteHistory('${r.id}')">🕘 查看历史版本</button>
+      <div id="rtHistoryBox" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">关联相机（当前 ${r.camera_count} 台）</div>
+      <div style="font-size:12px;color:#888;margin-bottom:10px">勾选这条线路沿途的相机（台账会自动显示归属）</div>
+      <div id="rtCamBox" style="display:flex;flex-wrap:wrap;gap:8px">
+        ${cams.length ? cams.map(c => `
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:14px;background:#f5f7f5;padding:8px 12px;border-radius:16px">
+            <input type="checkbox" value="${esc(c)}" ${r.cameras.includes(c) ? 'checked' : ''}> ${esc(c)}
+          </label>`).join('')
+        : '<div style="color:#999;font-size:13px">台账里还没有相机，请先到「台账」页添加</div>'}
+      </div>
+      <button class="btn" style="margin-top:12px" onclick="saveRouteCameras('${r.id}')">💾 保存关联相机</button>
+    </div>
+
+    ${isAdmin() ? `
+    <div class="card" style="background:#fdf7f7;border:1px solid #f3dcdc">
+      <div style="font-size:13px;color:#8a3b3b;line-height:1.7">
+        ⚠️ 删除这条轨迹。关联相机和历史记录都不受影响。
+      </div>
+      <button class="btn warn" style="margin-top:10px" onclick="delRoute('${r.id}')">🗑 删除这条轨迹</button>
+    </div>` : ''}
+  `;
+  document.getElementById('rtDetailModal').classList.remove('hidden');
+}
+
+function closeRouteDetail() {
+  document.getElementById('rtDetailModal').classList.add('hidden');
+  editingRouteId = null;
+}
+
+async function saveRouteEdit() {
+  if (!isAdmin()) { toast('改名称/备注需要管理员权限（设置页可开启）'); return; }
+  if (!editingRouteId) { toast('请先打开一条轨迹'); return; }
+  const nameEl = document.getElementById('rtName');
+  const noteEl = document.getElementById('rtNote');
+  if (!nameEl) { toast('页面已刷新，请重新打开轨迹'); return; }
+  const name = (nameEl.value || '').trim();
+  if (!name) { toast('名称不能为空'); return; }
+  const note = noteEl ? noteEl.value.trim() : '';
+  const rid = editingRouteId;
+  toast('保存中…');
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/routes/' + encodeURIComponent(rid), {
+      method: 'PATCH', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ name, note })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      await syncRoutes(true);
+      openRouteDetail(rid);
+      toast('✅ 已保存');
+    } else if (d.need_admin) {
+      toast('❌ 管理员权限已失效，请到「设置」重新开启管理员模式');
+    } else toast('❌ ' + (d.error || '保存失败'));
+  } catch (e) { toast('保存失败：' + (e.message || '网络错误')); }
+}
+
+// 静默保存名称/备注（供上传KML、保存相机前调用，防止用户填的内容被重渲染丢弃）
+// 仅管理员生效（队员没有改名称/备注的权限）
+async function saveRouteFieldsSilently(rid) {
+  if (!isAdmin()) return;
+  const nameEl = document.getElementById('rtName');
+  const noteEl = document.getElementById('rtNote');
+  if (!nameEl) return;
+  const name = (nameEl.value || '').trim();
+  if (!name) return;   // 名称为空则不覆盖
+  const note = noteEl ? noteEl.value.trim() : '';
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    await fetch(base + '/api/routes/' + encodeURIComponent(rid), {
+      method: 'PATCH', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ name, note })
+    });
+  } catch (e) { /* 离线时忽略，本地不影响 */ }
+}
+
+function uploadRouteKML(input) {
+  const f = input.files && input.files[0];
+  if (!f || !editingRouteId) return;
+  const rid = editingRouteId;
+  toast('上传中…');
+  const reader = new FileReader();
+  reader.onload = async () => {
+    // ★ 先保存用户填的名称/备注，避免上传后重渲染把它们丢掉
+    await saveRouteFieldsSilently(rid);
+    try {
+      const base = (serverUrl || '').replace(/\/$/, '');
+      const r = await fetch(base + '/api/routes/' + encodeURIComponent(rid) + '/kml', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kml_content: reader.result, kml_name: f.name })
+      });
+      const d = await r.json();
+      if (d.ok) {
+        await syncRoutes(true);
+        openRouteDetail(rid);
+        toast('✅ KML 已更新（历史保留 ' + d.history_versions + ' 版）');
+      } else toast('❌ ' + (d.error || '上传失败'));
+    } catch (e) { toast('上传失败：' + (e.message || '网络错误')); }
+    input.value = '';
+  };
+  reader.readAsText(f);
+}
+
+async function downloadRouteKML(rid) {
+  const r = routes.find(x => x.id === rid) || {};
+  const base = (serverUrl || '').replace(/\/$/, '');
+  toast('下载中…');
+  try {
+    const resp = await fetch(base + '/api/routes/' + encodeURIComponent(rid) + '/kml',
+                             { credentials: 'same-origin' });
+    if (!resp.ok) {
+      toast('下载失败：HTTP ' + resp.status
+        + (resp.status === 401 ? '（登录已过期，请关掉页面重开）' : ''));
+      return;
+    }
+    const blob = await resp.blob();
+    const fname = r.kml_name || ((r.name || 'route') + '.kml');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    toast('✅ 已下载：' + fname);
+  } catch (e) {
+    toast('下载失败：' + (e.message || '网络错误，请检查网络'));
+  }
+}
+
+async function downloadHistoryKML(rid, hid, fname) {
+  const base = (serverUrl || '').replace(/\/$/, '');
+  toast('下载中…');
+  try {
+    const resp = await fetch(base + '/api/routes/' + encodeURIComponent(rid) + '/history/' + hid,
+                             { credentials: 'same-origin' });
+    if (!resp.ok) { toast('下载失败：HTTP ' + resp.status); return; }
+    const blob = await resp.blob();
+    const name = fname || ('history_' + hid + '.kml');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    toast('✅ 已下载：' + name);
+  } catch (e) { toast('下载失败：' + (e.message || '网络错误')); }
+}
+
+async function showRouteHistory(rid) {
+  const box = document.getElementById('rtHistoryBox');
+  box.innerHTML = '<div style="color:#999;font-size:13px">加载中…</div>';
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/routes/' + encodeURIComponent(rid) + '/history');
+    const d = await r.json();
+    if (!d.count) { box.innerHTML = '<div style="color:#999;font-size:13px">暂无历史版本（还没更新过）</div>'; return; }
+    box.innerHTML = d.versions.map(v => `
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#fafafa;border:1px solid #eee;border-radius:8px;padding:9px 11px;margin-bottom:7px">
+        <div>
+          <div style="font-size:13px">${(v.saved_at || '').slice(0, 16).replace('T', ' ')}</div>
+          <div style="font-size:11px;color:#999">${esc(v.saved_by || '')} · ${(v.size / 1024).toFixed(1)}KB</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button data-rid="${esc(rid)}" data-hid="${v.hid}" data-kml="${esc(v.kml_name || '')}" onclick="downloadHistoryKML(this.dataset.rid, this.dataset.hid, this.dataset.kml)"
+             style="background:#f0f7f0;border:1px solid #cfe3cf;color:#1b5e20;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer">下载</button>
+          <button data-rid="${esc(rid)}" data-hid="${v.hid}" onclick="restoreRouteKML(this.dataset.rid, this.dataset.hid)"
+             style="background:#fff8e1;border:1px solid #ffe082;color:#8a6d00;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer">回退此版</button>
+        </div>
+      </div>`).join('');
+  } catch (e) { box.innerHTML = '<div style="color:#c00;font-size:13px">加载失败</div>'; }
+}
+
+async function restoreRouteKML(rid, hid) {
+  if (!confirm('回退到这个历史版本？\n\n当前版本会自动存入历史，可以再换回来')) return;
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/routes/' + encodeURIComponent(rid) + '/restore/' + hid, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) { toast('✅ 已回退'); await syncRoutes(true); openRouteDetail(rid); }
+    else toast('回退失败');
+  } catch (e) { toast('回退失败（网络）'); }
+}
+
+async function saveRouteCameras(rid) {
+  const codes = [...document.querySelectorAll('#rtCamBox input:checked')].map(i => i.value);
+  await saveRouteFieldsSilently(rid);   // ★ 先保住用户填的名称/备注
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/routes/' + encodeURIComponent(rid) + '/cameras', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codes })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast('✅ 已关联 ' + d.camera_count + ' 台相机');
+      await syncRoutes(true);
+      await syncRouteMap(true);
+      renderCameras();
+      renderRoutes();
+    } else toast('保存失败');
+  } catch (e) { toast('保存失败（网络）'); }
+}
+
+async function delRoute(rid) {
+  if (!isAdmin()) { toast('删除轨迹需要管理员权限（设置页可开启）'); return; }
+  const r = routes.find(x => x.id === rid);
+  if (!r) return;
+  if (!confirm('删除轨迹「' + r.name + '」？\n\n关联的相机不会被删除，历史维护记录也不受影响。')) return;
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const resp = await fetch(base + '/api/routes/' + encodeURIComponent(rid),
+                             { method: 'DELETE', headers: adminHeaders() });
+    const d = await resp.json();
+    if (d.ok) {
+      toast('已删除');
+      closeRouteDetail();
+      await syncRoutes(true);
+      await syncRouteMap(true);
+      renderCameras();
+    } else if (d.need_admin) {
+      toast('❌ 管理员权限已失效，请到「设置」重新开启管理员模式');
+    } else toast('删除失败');
+  } catch (e) { toast('删除失败：' + (e.message || '网络错误')); }
+}
+
 // ==================== 记录列表 ====================
 function updateStats() {
   document.getElementById('stTotal').textContent = records.length;
@@ -928,15 +1440,15 @@ function renderRecords() {
   if (records.length === 0) { box.innerHTML = '<div class="empty">暂无记录</div>'; return; }
   box.innerHTML = records.slice(0, 100).map(r => `
     <div class="rec">
-      <div class="t1">${r.code} · ${r.ops.join('/')}
+      <div class="t1">${esc(r.code)} · ${esc(r.ops.join('/'))}
         <span class="badge ${r.synced ? 'b-active' : 'b-pending'}">${r.synced ? '已同步' : '待同步'}</span></div>
-      <div class="t2">${r.operator} · ${new Date(r.ts).toLocaleString('zh-CN')}</div>
+      <div class="t2">${esc(r.operator)} · ${new Date(r.ts).toLocaleString('zh-CN')}</div>
       ${r.lat ? `<div class="t3">📍 ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</div>` : ''}
-      ${r.note ? `<div class="t3">📝 ${r.note}</div>` : ''}
-      ${r.kml ? `<div class="t3">🗺️ ${r.kml.name} ${r.kml.content
+      ${r.note ? `<div class="t3">📝 ${esc(r.note)}</div>` : ''}
+      ${r.kml ? `<div class="t3">🗺️ ${esc(r.kml.name)} ${r.kml.content
           ? `<a href="javascript:void(0)" onclick="downloadKML('${r.id}')" style="color:#1b5e20;font-weight:600;margin-left:6px">⬇️下载</a>`
           : `<a href="javascript:void(0)" onclick="loadKML('${r.id}')" style="color:#b8860b;font-weight:600;margin-left:6px">⬇️从服务器加载</a>`}</div>` : ''}
-      ${r.photo ? `<img src="${r.photo}" onclick="viewPhoto('${r.id}')" style="max-width:100px;max-height:100px;border-radius:8px;margin-top:7px;cursor:pointer;border:1px solid #e0e0e0">` : (r.hasPhoto ? `<button type="button" onclick="loadPhoto('${r.id}')" style="margin-top:7px;background:#fff8e1;border:1px solid #ffe082;border-radius:7px;padding:6px 12px;font-size:13px;color:#8a6d00">📷 加载服务器照片</button>` : '')}
+      ${safePhoto(r.photo) ? `<img src="${safePhoto(r.photo)}" onclick="viewPhoto('${r.id}')" style="max-width:100px;max-height:100px;border-radius:8px;margin-top:7px;cursor:pointer;border:1px solid #e0e0e0">` : (r.hasPhoto ? `<button type="button" onclick="loadPhoto('${r.id}')" style="margin-top:7px;background:#fff8e1;border:1px solid #ffe082;border-radius:7px;padding:6px 12px;font-size:13px;color:#8a6d00">📷 加载服务器照片</button>` : '')}
       ${isAdmin() ? `<div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
         <button type="button" onclick="editRecord('${r.id}')" style="background:#f0f7f0;border:1px solid #cfe3cf;color:#1b5e20;border-radius:7px;padding:5px 13px;font-size:13px;cursor:pointer">✏️ 修改</button>
         <button type="button" onclick="deleteRecord('${r.id}')" style="background:#fdf0f0;border:1px solid #f3cfcf;color:#b3261e;border-radius:7px;padding:5px 13px;font-size:13px;cursor:pointer">🗑 删除</button>
@@ -953,14 +1465,15 @@ function renderCameras() {
   const box = document.getElementById('camTable');
   if (list.length === 0) { box.innerHTML = '<div class="empty">' + (cameras.length ? '无匹配相机' : '暂无相机，请先导入编号') + '</div>'; return; }
   box.innerHTML = list.map(c => `
-    <div class="cam-item" onclick="openDetail('${c.code}')">
-      <div><div class="code">${c.code}</div>
-        <div class="meta">${c.lastMaint ? '上次: ' + c.lastMaint + ' ' + (c.lastBy||'') : '无维护记录'}</div></div>
+    <div class="cam-item" data-code="${esc(c.code)}" onclick="openDetail(this.dataset.code)">
+      <div><div class="code">${esc(c.code)}</div>
+        <div class="meta">${esc(c.lastMaint ? '上次: ' + c.lastMaint + ' ' + (c.lastBy||'') : '无维护记录')}</div>
+        ${(routeMap[c.code] && routeMap[c.code].length) ? `<div class="meta" style="color:#8a6d00">🗺️ ${esc(routeMap[c.code].map(x => x.name).join('、'))}</div>` : ''}</div>
       <div class="meta" style="text-align:right"><span class="badge ${c.status==='removed'?'b-removed':'b-active'}">${c.status==='removed'?'已移除':'在役'}</span>
         ${c.lat ? `<br>${c.lat.toFixed(4)},${c.lng.toFixed(4)}` : ''}
         ${isAdmin() ? `<div style="display:flex;gap:5px;justify-content:flex-end;margin-top:6px" onclick="event.stopPropagation()">
-          <button type="button" onclick="editCamera('${c.code}')" style="background:#f0f7f0;border:1px solid #cfe3cf;color:#1b5e20;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer">✏️</button>
-          <button type="button" onclick="delCamera('${c.code}')" style="background:#fdf0f0;border:1px solid #f3cfcf;color:#b3261e;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer">🗑</button>
+          <button type="button" data-code="${esc(c.code)}" onclick="editCamera(this.dataset.code)" style="background:#f0f7f0;border:1px solid #cfe3cf;color:#1b5e20;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer">✏️</button>
+          <button type="button" data-code="${esc(c.code)}" onclick="delCamera(this.dataset.code)" style="background:#fdf0f0;border:1px solid #f3cfcf;color:#b3261e;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer">🗑</button>
         </div>` : ''}
       </div>
     </div>`).join('');
@@ -971,21 +1484,21 @@ function openDetail(code) {
   const logs = records.filter(r => r.code === code);
   document.getElementById('detTitle').textContent = code;
   document.getElementById('detInfo').innerHTML = `
-    <div class="k">编号</div><div><b>${code}</b></div>
+    <div class="k">编号</div><div><b>${esc(code)}</b></div>
     <div class="k">状态</div><div>${c.status === 'removed' ? '🔴 已移除' : '🟢 在役'}</div>
     <div class="k">坐标</div><div>${c.lat ? c.lat.toFixed(6) + ', ' + c.lng.toFixed(6) : '无'}</div>
-    <div class="k">上次维护</div><div>${c.lastMaint ? c.lastMaint + ' ' + (c.lastBy||'') : '无'}</div>
+    <div class="k">上次维护</div><div>${esc(c.lastMaint ? c.lastMaint + ' ' + (c.lastBy||'') : '无')}</div>
     <div class="k">维护次数</div><div>${logs.length} 次</div>`;
   document.getElementById('detCount').textContent = logs.length;
   const lb = document.getElementById('detLogs');
   lb.innerHTML = logs.length === 0 ? '<div class="empty">该相机暂无维护记录</div>' :
     logs.map(r => `
       <div class="rec">
-        <div class="t1">${r.ops.join(' / ')}</div>
-        <div class="t2">${r.operator} · ${new Date(r.ts).toLocaleString('zh-CN')}</div>
+        <div class="t1">${esc(r.ops.join(' / '))}</div>
+        <div class="t2">${esc(r.operator)} · ${new Date(r.ts).toLocaleString('zh-CN')}</div>
         ${r.lat ? `<div class="t3">📍 ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</div>` : ''}
-        ${r.note ? `<div class="t3">📝 ${r.note}</div>` : ''}
-        ${r.photo ? `<div style="margin-top:9px"><img src="${r.photo}" onclick="viewPhoto('${r.id}')" style="max-width:100%;max-height:240px;border-radius:9px;cursor:pointer;border:1px solid #e0e0e0"><div style="font-size:11px;color:#999;margin-top:3px">👆 点图片可放大</div></div>` : (r.hasPhoto ? `<button type="button" onclick="loadPhoto('${r.id}')" class="btn sec" style="margin-top:8px;font-size:13px;padding:9px">📷 从服务器加载照片</button>` : '')}
+        ${r.note ? `<div class="t3">📝 ${esc(r.note)}</div>` : ''}
+        ${safePhoto(r.photo) ? `<div style="margin-top:9px"><img src="${safePhoto(r.photo)}" onclick="viewPhoto('${r.id}')" style="max-width:100%;max-height:240px;border-radius:9px;cursor:pointer;border:1px solid #e0e0e0"><div style="font-size:11px;color:#999;margin-top:3px">👆 点图片可放大</div></div>` : (r.hasPhoto ? `<button type="button" onclick="loadPhoto('${r.id}')" class="btn sec" style="margin-top:8px;font-size:13px;padding:9px">📷 从服务器加载照片</button>` : '')}
         ${r.kml ? `<button type="button" onclick="${r.kml.content ? 'downloadKML' : 'loadKML'}('${r.id}')" class="btn sec" style="margin-top:8px;font-size:13px;padding:9px">⬇️ ${r.kml.content ? '下载轨迹KML（' + (r.kml.size/1024).toFixed(1) + 'KB）' : '从服务器加载轨迹KML'}</button>` : ''}
       </div>`).join('');
   document.getElementById('camDetail').classList.remove('hidden');
@@ -1036,31 +1549,80 @@ function doImport() {
 }
 
 // ==================== 设置 ====================
-function addOperator() {
+// 维护人名单：服务器为主，队员只读，管理员可增删
+async function syncOperators(silent) {
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/operators');
+    const d = await r.json();
+    if (d.ok && Array.isArray(d.operators)) {
+      const merged = [...new Set([...d.operators, ...operators])].sort();
+      operators = merged;
+      LS.set('operators', operators);
+      renderOperators();
+      // 本地独有的（旧数据）尝试推送到服务器（仅管理员能成功）
+      const localOnly = operators.filter(o => !d.operators.includes(o));
+      if (localOnly.length && isAdmin()) {
+        for (const n of localOnly) {
+          await fetch(base + '/api/operators', {
+            method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ name: n })
+          });
+        }
+      }
+    }
+  } catch (e) { if (!silent) toast('名单同步失败（可能离线）'); }
+}
+
+async function addOperator() {
+  if (!isAdmin()) { toast('请先开启管理员模式'); return; }
   const el = document.getElementById('newOp');
   const v = (el.value || '').trim();
   if (!v) { toast('请输入姓名'); return; }
   if (operators.includes(v)) { toast('「' + v + '」已在名单中'); el.value = ''; return; }
   operators.push(v);
+  operators.sort();
   LS.set('operators', operators);
   el.value = '';
   renderOperators();
-  toast('✅ 已添加：' + v);
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/operators', {
+      method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ name: v })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (d.ok) toast('✅ 已添加：' + v + '（已同步给全体队员）');
+    else if (d.need_admin) toast('❌ 管理员口令失效，请重新开启');
+    else toast('⚠️ 本机已添加，服务器同步失败');
+  } catch (e) { toast('⚠️ 本机已添加，无网络——服务器未同步'); }
 }
-function delOperator(idx) {
+
+async function delOperator(idx) {
+  if (!isAdmin()) { toast('请先开启管理员模式'); return; }
   const name = operators[idx];
   if (name === undefined) { toast('未找到该维护人'); return; }
-  if (!confirm('确定删除维护人「' + name + '」吗？\n（已保存的历史记录不受影响）')) return;
+  if (!confirm('确定删除维护人「' + name + '」吗？\n\n已保存的历史记录不受影响，改动会同步给全体队员')) return;
   operators.splice(idx, 1);
   LS.set('operators', operators);
   renderOperators();
-  toast('已删除：' + name);
+  try {
+    const base = (serverUrl || '').replace(/\/$/, '');
+    const r = await fetch(base + '/api/operators/' + encodeURIComponent(name), {
+      method: 'DELETE', headers: adminHeaders()
+    });
+    const d = await r.json().catch(() => ({}));
+    if (d.ok) toast('已删除：' + name);
+    else if (d.need_admin) toast('❌ 管理员口令失效');
+    else toast('⚠️ 本机已删除，服务器同步失败');
+  } catch (e) { toast('⚠️ 本机已删除，无网络'); }
 }
+
 function renderOperators() {
   // 录入页的下拉选择
   document.getElementById('operator').innerHTML = '<option value="">请选择维护人</option>' +
     operators.map(o => `<option value="${o}">${o}</option>`).join('');
-  // 设置页的名单列表(带删除按钮)
+  // 设置页的名单列表（删除按钮仅管理员可见）
   // 注意: 用【索引】而不是名字传参, 避免名字里的引号破坏 onclick 属性
   const box = document.getElementById('opList');
   if (!box) return;
@@ -1068,9 +1630,14 @@ function renderOperators() {
     ? operators.map((o, i) => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#f5f7f5;border-radius:9px;margin-bottom:7px">
           <span style="font-size:15px">${o}</span>
-          <button type="button" onclick="delOperator(${i})" style="background:#fee;border:none;color:#c00;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">删除</button>
+          ${isAdmin() ? `<button type="button" onclick="delOperator(${i})" style="background:#fee;border:none;color:#c00;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">删除</button>` : ''}
         </div>`).join('')
-    : '<div style="color:#999;font-size:13px;padding:6px 0">暂无维护人，请在上方添加</div>';
+    : '<div style="color:#999;font-size:13px;padding:6px 0">暂无维护人' + (isAdmin() ? '，请在上方添加' : '，请联系管理员添加') + '</div>';
+  // 添加区/提示语 按权限显示
+  const mb = document.getElementById('opManageBox');
+  if (mb) mb.style.display = isAdmin() ? '' : 'none';
+  const oh = document.getElementById('opHint');
+  if (oh) oh.style.display = isAdmin() ? 'none' : '';
 }
 // 服务器地址默认为"同源"（空字符串），界面只显示状态，不提供手动编辑
 function renderSrv() {
@@ -1089,29 +1656,46 @@ async function testServer() {
   }
 }
 function exportJSON() {
-  const blob = new Blob([JSON.stringify({ cameras, records }, null, 2)], { type: 'application/json' });
+  // 【2026-09-29】本地导出不含"已同步记录"的照片（同步后已释放以节省手机空间，服务器上有备份）。
+  // 需要含照片的完整备份，可访问：<服务器>/api/export.json?include_photos=1
+  const blob = new Blob([JSON.stringify({
+    cameras, records,
+    exported_at: new Date().toISOString(),
+    note: '本机导出：不含已同步记录的照片（服务器上有）；完整备份请访问 /api/export.json?include_photos=1'
+  }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = '红外相机维护记录_' + new Date().toISOString().slice(0,10) + '.json';
-  a.click(); toast('已导出');
+  a.click();
+  toast('已导出本机数据（不含照片）');
 }
 function clearAll() {
-  if (confirm('确定清空本机所有数据？不可恢复！')) {
-    ['cameras','records','operators','serverUrl'].forEach(k => localStorage.removeItem('ircam_' + k));
-    location.reload();
-  }
+  const pending = (records || []).filter(r => !r.synced).length;
+  let msg = '清空本机缓存？\n\n· 服务器上的数据【不受影响】\n· 清空后会自动从服务器重新拉取最新数据';
+  if (pending > 0) msg += `\n\n⚠️ 本机还有 ${pending} 条【未同步】记录，清空后会丢失！`;
+  if (!confirm(msg)) return;
+  if (pending > 0 && !confirm(`再次确认：${pending} 条未同步记录将永久丢失，继续？`)) return;
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith('ircam_')).forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+  toast('正在清空并重新加载…');
+  // 同时清 Service Worker 缓存，确保拿到最新页面代码（不只是 localStorage）
+  const done = () => { location.href = location.pathname + '?fresh=' + Date.now(); };
+  try {
+    if (window.caches && caches.keys) {
+      caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))).then(done).catch(done);
+    } else { done(); }
+  } catch (e) { done(); }
 }
 
 // ==================== 初始化 ====================
 function init() {
   serverUrl = LS.get('serverUrl', DEFAULT_SERVER);
   renderSrv();
-  renderOperators(); renderCamList(); updateNet(); updateStats(); renderSyncInfo(); renderAdminUI();
-  if (cameras.length === 0) {
-    ['MTG01','MTG02','MTG03','YS01','YS02'].forEach(c =>
-      cameras.push({ code: c, status: 'active', lat: null, lng: null, lastMaint: null, lastBy: null }));
-    LS.set('cameras', cameras);
-  }
+  renderOperators(); renderCamList(); updateNet(); updateStats(); renderSyncInfo(); renderAdminUI(); renderRoutes();
+  // 2026-09-29 移除：不再预置示例相机（MTG01/MTG02/MTG03/YS01/YS02）。
+  // 原因：管理员清理测试数据后，默认值会让空系统"看起来仍有数据"，干扰正式录入。
+  // 相机一律由管理员「批量导入编号」或「添加相机」建立。
   renderCamList();
   // 注册 Service Worker (离线支持)
   if ('serviceWorker' in navigator) {

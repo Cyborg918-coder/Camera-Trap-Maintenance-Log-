@@ -1,6 +1,6 @@
 // Service Worker - 离线缓存 (红外相机维护日志)
 // 作用: 出发前打开一次 → 页面缓存到手机 → 野外无信号也能打开
-const CACHE = 'ircam-v1';
+const CACHE = 'ircam-v2';   // 2026-09-29 升级：清理测试数据 + 缓存迁移，强制队员端刷新
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {

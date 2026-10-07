@@ -46,3 +46,10 @@ export*.csv
 Thumbs.db
 *.swp
 *~
+
+# ===== 本站部署脚本（含服务器路径与口令，不公开）=====
+deploy.sh
+deploy.local.*
+
+# ===== 数据备份（含真实 KML 点位与数据库快照）=====
+backups/
