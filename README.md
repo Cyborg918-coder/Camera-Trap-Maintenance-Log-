@@ -1,71 +1,83 @@
-# 红外相机维护日志系统
+# Camera Trap Maintenance Log
 
-给野外红外相机监测用的**离线优先**维护日志工具。野外无信号也能记录，回到有网自动汇总全队数据。
+**English** · [简体中文](README.zh-CN.md)
 
----
+An **offline-first** maintenance log for camera-trap wildlife surveys — record in the field
+with no signal, then sync the whole team's data automatically once you are back online.
 
-## 为什么做这个
-
-红外相机监测（野生动物调查）的日常维护有个共性痛点：
-
-- 野外**没有手机信号**，在线表格打不开
-- **纸质记录**容易丢失、遗漏、字迹潦草
-- 维护**进度不透明**——不知道哪台相机该去了、谁去过
-- 拍的照片和现场位置**对不上号**
-
-这套系统把"维护日志"装进手机，做到离线可用 + 拍照定位 + 自动汇总 + 台账透明。
+> Built for and used in a real camera-trap survey in the mountains around Beijing:
+> 100+ camera traps, several field operators, and no cell coverage at the survey sites.
 
 ---
 
-## 功能
+## Why this exists
 
-### 离线优先
-- PWA + Service Worker 离线缓存（出发前联网打开一次，之后无信号可用）
-- 数据先存浏览器本地（localStorage），有网络时自动上传
+Camera-trap surveys share a set of everyday maintenance problems:
 
-### 维护记录
-- 选择相机编号 + 维护人 + 操作类型（可多选）
-- 自动获取 GPS 坐标（HTTPS 下）
-- 现场照片（canvas 自动压缩后存储）
-- KML 轨迹文件上传（两步路等 App 导出）
-- 自由备注
+- **No cell signal in the field** — online spreadsheets and forms simply will not open
+- **Paper logs** get lost, get skipped, or come back illegible
+- **Progress is invisible** — nobody can tell which cameras are due for a check, or who last visited them
+- **Photos and coordinates do not line up** with the right camera
 
-### 多人协作
-- 后端 FastAPI + SQLite 汇总
-- **自动双向同步**：上传本机未同步记录 + 拉取服务器上其他人的记录
-- 相机台账自动更新（哪台最后被谁维护过）
-
-### 权限管理
-- 访问口令（HTTP Basic Auth）——队员用，能看能录
-- **管理员口令**——修改/删除需单独解锁，队员看不到相关按钮
-- **回收站**（软删除）——误删可恢复，彻底删除需二次确认
-
-### 省流量设计
-- 照片**按需加载**：列表只拉文字字段，点开某张照片才下载该条记录
-- 单条记录接口 `/api/record/{id}` 返回完整内容（含照片 base64）
+This system puts the maintenance log on the phone: offline-capable, photo and GPS capture,
+automatic aggregation, and a camera roster that stays current.
 
 ---
 
-## 技术栈
+## Features
 
-| 层 | 技术 |
+### Offline-first
+- PWA + Service Worker caching — open it once while you have a connection, then use it with none
+- Records are written to `localStorage` first and uploaded automatically once a network appears
+
+### Maintenance records
+- Camera ID + operator + operation type (multi-select) + free-text note
+- Automatic GPS capture (needs a secure context — see [HTTPS is required](#https-is-required))
+- Field photos, auto-compressed via `canvas` before storage
+- KML track upload, as exported from apps such as TwoStepRoute
+
+### Team collaboration
+- FastAPI + SQLite backend aggregates everyone's records
+- **Automatic two-way sync** — uploads this device's unsynced records and pulls in everybody else's
+- The camera roster keeps itself current: which camera was last maintained, by whom, and when
+
+### Access control
+- **Access password** (HTTP Basic Auth) — for field team members: view and record
+- **Admin password** — required separately for editing and deleting; team members never see those controls
+- **Recycle bin** (soft delete) — deletions are recoverable, and permanent deletion needs confirmation
+
+### Routes
+- Named survey routes (e.g. `MTG North Line`) with an explicit camera order along each one
+- One KML per route, with **version history** — the last 3 versions are kept and any of them can be restored
+
+### Bandwidth-conscious by design
+- **Lazy photo loading** — the list endpoint returns text fields only; a photo is fetched when you open that record
+- `GET /api/record/{rid}` returns one full record, including the base64 photo
+
+---
+
+## Tech stack
+
+| Layer | Technology |
 |---|---|
-| 前端 | 单文件 HTML + 原生 JS（无框架、无构建步骤）|
-| 后端 | FastAPI + SQLite + uvicorn |
-| 部署 | systemd + 自签证书 HTTPS |
-| 离线 | Service Worker + Cache API |
+| Frontend | Single-file HTML + vanilla JS — no framework, no build step |
+| Backend | FastAPI + SQLite (WAL) + uvicorn |
+| Deployment | systemd + self-signed TLS |
+| Offline | Service Worker + Cache API + localStorage |
+
+No build tooling, no bundler, no npm. Edit `index.html` and reload.
 
 ---
 
-## 快速开始
+## Quick start
 
-### 后端
+### Backend
 
 ```bash
 python -m venv venv
 venv/bin/pip install fastapi uvicorn
 
-# 口令必须通过环境变量提供
+# Passwords are read from the environment only — never hard-coded
 export IRCAM_USER=team
 export IRCAM_PASS=your_password
 export IRCAM_ADMIN_PASS=your_admin_password
@@ -73,28 +85,41 @@ export IRCAM_ADMIN_PASS=your_admin_password
 venv/bin/python -m uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
-### 前端
+The database (`ircam.db`) and its tables are created automatically on first start.
 
-`index.html` 是单文件应用，放到任意静态目录即可。
-前后端同源部署时无需配置服务器地址（前端 `DEFAULT_SERVER = ''` 表示同源）。
+### Frontend
+
+`index.html` is a single-file app — put it in any static directory, or let the backend serve it.
+
+When the frontend and backend share an origin, no configuration is needed: the frontend's
+`DEFAULT_SERVER = ''` means "same origin".
 
 ---
 
-## 环境变量
+## Configuration
 
-| 变量 | 说明 | 默认值 |
+### Environment variables
+
+| Variable | Meaning | Default |
 |---|---|---|
-| `IRCAM_USER` | 访问用户名 | `team` |
-| `IRCAM_PASS` | 访问口令（队员用）| `CHANGE_ME` ⚠️ 必须修改 |
-| `IRCAM_ADMIN_PASS` | 管理员口令（改删数据用）| `CHANGE_ME_ADMIN` ⚠️ 必须修改 |
+| `IRCAM_USER` | Access username | `team` |
+| `IRCAM_PASS` | Access password — for field team members | **unset** ⚠️ |
+| `IRCAM_ADMIN_PASS` | Admin password — for edit / delete | **unset** ⚠️ |
+| `QUOTE_USER` | Username for the `/quote/*` path only | falls back to `IRCAM_USER` |
+| `QUOTE_PASS` | Password for the `/quote/*` path only | falls back to `IRCAM_PASS` |
 
----
+**Security behaviour:** if `IRCAM_PASS` is not set, the server generates a random password at
+startup and prints it, rather than falling back to a publicly known default. The system boots
+**closed**, never open — there is no default password to forget to change.
 
-## 生产部署（systemd 示例）
+`QUOTE_USER` / `QUOTE_PASS` exist so a public-facing page can live under the same server with a
+different, separately shareable password.
+
+### Production deployment (systemd)
 
 ```ini
 [Unit]
-Description=IRCAM Maintenance System
+Description=Camera Trap Maintenance Log
 After=network.target
 
 [Service]
@@ -104,7 +129,7 @@ WorkingDirectory=/path/to/ircam
 Environment=IRCAM_USER=team
 Environment=IRCAM_PASS=your_password
 Environment=IRCAM_ADMIN_PASS=your_admin_password
-# 如需绑定 80 等特权端口：
+# Needed only to bind a privileged port such as 80:
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 ExecStart=/path/to/venv/bin/python -m uvicorn server:app --host 0.0.0.0 --port 8000
@@ -115,7 +140,7 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-HTTPS 版本在 `ExecStart` 末尾追加：
+For HTTPS, append to `ExecStart`:
 
 ```
 --ssl-keyfile /path/to/key.pem --ssl-certfile /path/to/cert.pem
@@ -123,59 +148,14 @@ HTTPS 版本在 `ExecStart` 末尾追加：
 
 ---
 
-## API 一览
+## HTTPS is required
 
-| 方法 | 路径 | 说明 | 权限 |
-|---|---|---|---|
-| GET | `/api/records` | 记录列表（不含照片内容，带 has_photo 标记）| 访问口令 |
-| GET | `/api/record/{id}` | 单条记录完整内容（含照片/KML）| 访问口令 |
-| POST | `/api/records` | 批量上传记录 | 访问口令 |
-| PATCH | `/api/record/{id}` | 修改记录 | 管理员 |
-| DELETE | `/api/record/{id}` | 删除记录（移入回收站）| 管理员 |
-| GET | `/api/trash` | 回收站列表 | 管理员 |
-| POST | `/api/restore/{id}` | 从回收站恢复 | 管理员 |
-| DELETE | `/api/purge/{id}` | 彻底删除 | 管理员 |
-| GET | `/api/cameras` | 相机台账 | 访问口令 |
-| POST | `/api/camera` | 新增/更新相机 | 管理员 |
-| POST | `/api/cameras/bulk` | 批量导入相机编号 | 管理员 |
-| DELETE | `/api/camera/{code}` | 删除相机 | 管理员 |
-| GET | `/api/stats` | 统计信息 | 访问口令 |
-| GET | `/api/export.csv` | 导出 CSV | 访问口令 |
-| GET | `/api/export.json` | 导出 JSON | 访问口令 |
+Two features need a **secure context** and will silently refuse to work over plain HTTP:
 
-管理员接口需要请求头 `x-admin-pass: <管理员口令>`。
+- **Service Worker** (offline caching) → the page will not open offline in the field
+- **Geolocation** (GPS) → position capture fails
 
----
-
-## 数据库结构
-
-**records**
-
-```
-id, ts, operator, code, ops(JSON数组), lat, lng, note,
-photo(base64), kml_name, kml_content, created_at,
-deleted, deleted_at, deleted_by
-```
-
-**cameras**
-
-```
-code, status(active/removed), lat, lng,
-last_maint, last_by, updated_at
-```
-
-首次启动自动建表；已有库会自动补 `deleted` 等新增字段（迁移逻辑在 `init_db()`）。
-
----
-
-## HTTPS 的必要性
-
-以下两项功能要求"安全上下文"（HTTPS），HTTP 下浏览器会拒绝：
-
-- **Service Worker**（离线缓存）→ 野外打不开页面
-- **Geolocation**（GPS 定位）→ 定位失败
-
-自签证书方案（无域名时唯一可行）：
+A self-signed certificate is the only option when you have no domain name:
 
 ```bash
 openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem \
@@ -183,28 +163,175 @@ openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem \
   -addext "subjectAltName=IP:YOUR_IP"
 ```
 
-然后每位队员在手机上手动信任一次该证书（Android / iOS 步骤不同，iOS 需额外开启"证书信任设置"）。
+Every field operator then trusts that certificate once on their phone. The steps differ between
+Android and iOS — on iOS you must additionally enable it under
+*Settings → General → About → Certificate Trust Settings*.
 
 ---
 
-## 项目结构
+## API reference
+
+All `/api/*` routes require the access password. Routes marked **admin** additionally require the
+admin password in the `x-admin-pass` header.
+
+### Records
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| `GET` | `/api/records` | Record list (text fields only, `has_photo` flag) | access |
+| `POST` | `/api/records` | Upload records (batch supported) | access |
+| `GET` | `/api/record/{rid}` | One full record, including photo / KML | access |
+| `PATCH` | `/api/record/{rid}` | Edit a record | admin |
+| `DELETE` | `/api/record/{rid}` | Soft delete → recycle bin | admin |
+| `GET` | `/api/deleted-record-ids` | IDs of soft-deleted records (for client-side sync) | access |
+
+### Recycle bin
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| `GET` | `/api/trash` | List deleted records | admin |
+| `POST` | `/api/restore/{rid}` | Restore from the recycle bin | admin |
+| `DELETE` | `/api/purge/{rid}` | Permanently delete (irreversible) | admin |
+
+### Cameras
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| `GET` | `/api/cameras` | Camera roster | access |
+| `POST` | `/api/cameras` | Bulk upsert from a `cameras` array — updates coordinates and status | admin |
+| `POST` | `/api/camera` | Create / update one camera | admin |
+| `POST` | `/api/cameras/bulk` | Bulk-import new camera IDs (existing IDs are skipped) | admin |
+| `DELETE` | `/api/camera/{code}` | Remove a camera (its records are kept) | admin |
+| `GET` | `/api/camera/{code}/route` | Which route a camera belongs to | access |
+
+### Routes
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| `GET` | `/api/routes` | Route list | access |
+| `POST` | `/api/routes` | Create a route | access |
+| `GET` | `/api/routes/{rid}` | Route detail (without the KML body) | access |
+| `PATCH` | `/api/routes/{rid}` | Rename / re-note a route | admin |
+| `DELETE` | `/api/routes/{rid}` | Soft-delete a route | admin |
+| `GET` | `/api/routes-map` | Camera → route mapping, for the roster page | access |
+| `GET` | `/api/routes/{rid}/kml` | Download the current KML | access |
+| `POST` | `/api/routes/{rid}/kml` | Replace the KML (the previous version is archived) | access |
+| `GET` | `/api/routes/{rid}/history` | KML version history | access |
+| `GET` | `/api/routes/{rid}/history/{hid}` | Download one historical version | access |
+| `POST` | `/api/routes/{rid}/restore/{hid}` | Restore a historical version as current | access |
+
+### Operators
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| `GET` | `/api/operators` | Operator list (populates the entry form) | access |
+| `POST` | `/api/operators` | Add an operator | admin |
+| `DELETE` | `/api/operators/{name}` | Remove an operator (past records are unaffected) | admin |
+
+### Stats & export
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| `GET` | `/api/stats` | Summary counters | access |
+| `GET` | `/api/export.csv` | Export records as CSV | access |
+| `GET` | `/api/export.json` | Full JSON export (backup) | access |
+
+### Static
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | The single-file frontend |
+| `GET` | `/sw.js` | Service Worker |
+| `GET` | `/manifest.json` | PWA manifest |
+
+---
+
+## Database schema
+
+```sql
+records (
+  id TEXT PRIMARY KEY,
+  ts TEXT, operator TEXT, code TEXT,
+  ops TEXT,              -- JSON array of operation types
+  lat REAL, lng REAL, note TEXT,
+  photo TEXT,            -- base64
+  kml_name TEXT, kml_content TEXT,
+  created_at TEXT
+)
+
+cameras (
+  code TEXT PRIMARY KEY,
+  status TEXT DEFAULT 'active',   -- active | removed
+  lat REAL, lng REAL,
+  last_maint TEXT, last_by TEXT,
+  updated_at TEXT
+)
+
+operators (
+  name TEXT PRIMARY KEY,
+  created_at TEXT, created_by TEXT
+)
+
+routes (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kml_content TEXT, kml_name TEXT,
+  kml_updated_at TEXT, kml_updated_by TEXT,
+  note TEXT,
+  created_at TEXT, created_by TEXT,
+  deleted INTEGER DEFAULT 0, deleted_at TEXT
+)
+
+route_cameras (
+  route_id TEXT, code TEXT, seq INTEGER,
+  PRIMARY KEY (route_id, code)
+)
+
+route_kml_history (
+  hid INTEGER PRIMARY KEY AUTOINCREMENT,
+  route_id TEXT, kml_content TEXT, kml_name TEXT,
+  saved_at TEXT, saved_by TEXT
+)
+
+purged_records (
+  id TEXT PRIMARY KEY, purged_at TEXT
+)
+```
+
+Tables are created on first start. Existing databases are migrated in place — `init_db()` adds the
+soft-delete columns (`deleted`, `deleted_at`, `deleted_by`) to `records` if they are missing.
+
+---
+
+## Project structure
 
 ```
 ircam/
-├── index.html      # 单文件前端（录入/记录/台账/设置）
-├── server.py       # FastAPI 后端 + SQLite
-├── sw.js           # Service Worker（离线缓存）
-├── manifest.json   # PWA 清单
+├── index.html      # Single-file frontend (entry / records / roster / settings)
+├── server.py       # FastAPI backend + SQLite
+├── sw.js           # Service Worker (offline cache)
+├── manifest.json   # PWA manifest
 ├── LICENSE         # MIT
 ├── .gitignore
 └── README.md
 ```
 
-> 运行期产生的 `venv/`、`ircam.db`、`cert/` 与本站部署脚本**已在 `.gitignore` 中排除**。
-> 数据库与证书绝不入库。
+> Runtime artifacts — `venv/`, `ircam.db`, `cert/`, and any site-specific deploy script — are
+> **excluded by `.gitignore`**. Survey data, certificates and deployment credentials must never
+> be committed.
 
 ---
 
-## 许可
+## Notes for contributors
 
-MIT License
+- **Field data and credentials never enter the repository.** `.gitignore` enforces this; please
+  keep it that way rather than relying on remembering.
+- Passwords are read from the environment only. Do not add a hard-coded fallback default —
+  booting with a known password is worse than failing to boot.
+- `index.html` is intentionally dependency-free. Please do not introduce a build step.
+
+---
+
+## License
+
+[MIT](LICENSE)
